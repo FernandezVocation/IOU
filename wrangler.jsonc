@@ -1,0 +1,10 @@
+{
+  // Cloudflare: serve the built site (dist/) as a single-page app, so links like /join/abc and /b/abc
+  // open the app instead of a 404. No server code; static files are free to serve.
+  "name": "trip-ledger",
+  "compatibility_date": "2025-04-23",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}

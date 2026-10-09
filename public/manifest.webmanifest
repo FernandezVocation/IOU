@@ -1,0 +1,10 @@
+{
+  "name": "Trip Ledger",
+  "short_name": "Trip Ledger",
+  "description": "Track and split group trip expenses across currencies.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F2F4F1",
+  "theme_color": "#2B44FF",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
