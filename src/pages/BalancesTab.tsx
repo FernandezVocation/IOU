@@ -87,7 +87,7 @@ export default function BalancesTab() {
     <>
       <div className="panel">
         <label className="switch"><input type="checkbox" checked={includeEst} onChange={e => setIncludeEst(e.target.checked)} /><span>Include estimated amounts</span></label>
-        <div className="muted small">{unsettled ? `${R.counts.estimated} estimated at your trip rates${R.counts.missing ? `, ${R.counts.missing} with no rate (not counted)` : ''}. Enter the ${cur} amount on each to make it final.` : 'Every amount is confirmed.'}</div>
+        <div className="muted small">{unsettled ? `${R.counts.estimated} estimated at your group’s rates${R.counts.missing ? `, ${R.counts.missing} with no rate (not counted)` : ''}. Enter the ${cur} amount on each to make it final.` : 'Every amount is confirmed.'}</div>
       </div>
       {pendingTotal > 0 && <div className="notice">{fmtMoney(pendingTotal, cur)} in recorded payments {R.pendingPayments.length === 1 ? 'is' : 'are'} waiting for the receiver to confirm, so {R.pendingPayments.length === 1 ? 'it isn’t' : 'they aren’t'} counted below yet.</div>}
 
@@ -205,7 +205,7 @@ export default function BalancesTab() {
 
       <div className="sect">
         <h2>Reports & invoices</h2>
-        <div className="muted small">Download the full trip report, or create an itemized invoice for any person or couple to send.</div>
+        <div className="muted small">Download the full group report, or create an itemized invoice for any person or couple to send.</div>
         <Link className="btn primary block" style={{ marginTop: 10 }} to={`/g/${data.group.id}/reports`}>Open reports</Link>
       </div>
 

@@ -15,6 +15,7 @@ export function mapExpense(x: any): Expense {
   return {
     ...rest,
     amount: Number(rest.amount),
+    subcategory: rest.subcategory ?? '',
     settled_amount: rest.settled_amount == null ? null : Number(rest.settled_amount),
     splits: (expense_splits ?? []).map((s: any) => ({ traveler_id: s.traveler_id, value: Number(s.value) })),
     receipts: rest.receipts ?? [],

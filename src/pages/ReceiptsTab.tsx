@@ -24,7 +24,7 @@ export default function ReceiptsTab() {
   const [zipMsg, setZipMsg] = useState<string | null>(null)
 
   const s = q.trim().toLowerCase()
-  const match = (e: Expense) => !s || [e.vendor, e.location, e.category, e.notes, e.spent_on, who(data, e.payer_id, false)].join(' ').toLowerCase().includes(s)
+  const match = (e: Expense) => !s || [e.vendor, e.location, e.category, e.subcategory ?? '', e.notes, e.spent_on, who(data, e.payer_id, false)].join(' ').toLowerCase().includes(s)
   const items = useMemo(() => data.expenses.filter(match).flatMap(e => e.receipts.map((r, i) => ({ e, r, i }))), [data.expenses, s]) // eslint-disable-line react-hooks/exhaustive-deps
   const urls = useSignedUrls(items.map(x => x.r.path))
   const total = data.expenses.reduce((n, e) => n + e.receipts.length, 0)
@@ -105,7 +105,7 @@ export default function ReceiptsTab() {
         </div>
       )}
 
-      <div className="muted small" style={{ marginTop: 22 }}>Receipts are kept in this trip’s private storage. Only people in the trip can open them.</div>
+      <div className="muted small" style={{ marginTop: 22 }}>Receipts are kept in this group’s private storage. Only people in the group can open them.</div>
 
       {open && (
         <Sheet title="Receipt" onClose={() => setOpen(null)}>
@@ -114,7 +114,7 @@ export default function ReceiptsTab() {
             : urls[open.r.path] && <img className="bigrc" src={urls[open.r.path]} alt={`Receipt for ${open.e.vendor}`} />}
           <div className="panel">
             <h2>{open.e.vendor || 'Expense'}</h2>
-            <div className="ln"><span>Trip</span><span className="a">{data.group.name}</span></div>
+            <div className="ln"><span>Group</span><span className="a">{data.group.name}</span></div>
             <div className="ln"><span>Date</span><span className="a">{fmtDate(open.e.spent_on)}{open.e.spent_at ? ' · ' + fmtTime(open.e.spent_at) : ''}</span></div>
             <div className="ln"><span>Amount</span><span className="a">{fmtMoney(toMinor(open.e.amount, open.e.currency), open.e.currency)}</span></div>
             {open.e.currency !== cur && open.e.settled_amount != null && <div className="ln"><span>Charged in {cur}</span><span className="a">{fmtMoney(toMinor(open.e.settled_amount, cur), cur)}</span></div>}

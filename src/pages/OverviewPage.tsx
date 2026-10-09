@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { fetchAllGroups, type AllGroups } from '../lib/allGroups'
 import { buildOverview, totalsByCurrency, type Person } from '../lib/overview'
+import { buildOverviewBreakdown, type Metric } from '../lib/breakdown'
+import BreakdownList, { CategoryBar } from '../components/BreakdownList'
 import { buildOverviewPdf } from '../lib/overviewPdf'
 import { downloadBlob } from '../lib/exporters'
 import { fmtMoney } from '../lib/money'
@@ -12,7 +14,7 @@ import TopNav from '../components/TopNav'
 import RecordAcrossSheet from '../components/RecordAcrossSheet'
 import PeopleSheet from '../components/PeopleSheet'
 
-/** All your trips at once: what each person owes you, or you owe them, per currency. */
+/** All your groups at once: what each person owes you, or you owe them, per currency. */
 export default function OverviewPage() {
   const { user, displayName } = useAuth()
   const toast = useToast()
@@ -25,6 +27,8 @@ export default function OverviewPage() {
   const [record, setRecord] = useState<Person | null>(null)
   const [peopleOpen, setPeopleOpen] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [view, setView] = useState<'balances' | 'spending'>('balances')
+  const [metric, setMetric] = useState<Metric>('total')
 
   const load = useCallback(async () => {
     try { setAll(await fetchAllGroups(uid)); setError(null) } catch (e) { setError(friendly(e)) }
@@ -42,8 +46,12 @@ export default function OverviewPage() {
     [all, uid, includeEst, selected],
   )
   const totals = totalsByCurrency(people)
+  const spending = useMemo(
+    () => buildOverviewBreakdown(trips.filter(g => selected === null || selected.has(g.group.id)), metric),
+    [trips, selected, metric],
+  )
   const included = (id: string) => selected === null || selected.has(id)
-  // From "All trips", tapping a trip focuses on just that trip; further taps add or remove trips.
+  // From "All groups", tapping a trip focuses on just that trip; further taps add or remove trips.
   const toggleTrip = (id: string) => {
     if (selected === null) { setSelected(new Set([id])); return }
     const cur = new Set(selected)
@@ -55,29 +63,55 @@ export default function OverviewPage() {
 
   async function pdf(list: Person[], title?: string, name = 'overview') {
     setBusy(true)
-    try { downloadBlob(await buildOverviewPdf({ people: list, preparedBy: displayName, tripNames, includeEstimates: includeEst, title }), `trip-${slug(name)}-${todayStr()}.pdf`) }
+    try { downloadBlob(await buildOverviewPdf({ people: list, preparedBy: displayName, tripNames, includeEstimates: includeEst, title }), `balances-${slug(name)}-${todayStr()}.pdf`) }
     catch (e) { toast(friendly(e)) } finally { setBusy(false) }
   }
 
   return (
     <>
       <div className="app">
-        <div className="top"><div><h1>Overview</h1><div className="sub">Balances across your trips</div></div><button className="btn small" onClick={load}>Refresh</button></div>
+        <div className="top"><div><h1>Overview</h1><div className="sub">Balances across your groups</div></div><button className="btn small" onClick={load}>Refresh</button></div>
         {error && <div className="notice err" role="alert">{error}</div>}
         {!all && !error && <Spinner />}
-        {all && !trips.length && <div className="empty"><b>No trips yet</b>Once you’re on a trip, balances with the people you travel with show up here.</div>}
+        {all && !trips.length && <div className="empty"><b>No groups yet</b>Once you’re in a group, balances with the people you share costs with show up here.</div>}
         {all && trips.length > 0 && (
           <>
             <div className="panel">
-              <div className="muted small" style={{ marginBottom: 6 }}>Trips included</div>
+              <div className="muted small" style={{ marginBottom: 6 }}>Groups included</div>
               <div className="chips" style={{ margin: 0 }}>
-                <button className="chip" aria-pressed={selected === null} onClick={() => setSelected(null)}>All trips ({trips.length})</button>
+                <button className="chip" aria-pressed={selected === null} onClick={() => setSelected(null)}>All groups ({trips.length})</button>
                 {trips.map(t => <button key={t.group.id} className="chip" aria-pressed={included(t.group.id) && selected !== null} onClick={() => toggleTrip(t.group.id)}>{t.group.name}</button>)}
               </div>
               <label className="switch" style={{ marginTop: 6 }}><input type="checkbox" checked={includeEst} onChange={e => setIncludeEst(e.target.checked)} /><span>Include estimated amounts</span></label>
             </div>
 
-            {totals.length > 0 && (
+            <div className="seg" role="group" aria-label="What to show" style={{ marginBottom: 12 }}>
+              <button aria-pressed={view === 'balances'} onClick={() => setView('balances')}>Balances</button>
+              <button aria-pressed={view === 'spending'} onClick={() => setView('spending')}>Spending by category</button>
+            </div>
+
+            {view === 'spending' && (
+              <>
+                <div className="seg" role="group" aria-label="Amounts" style={{ marginBottom: 6 }}>
+                  <button aria-pressed={metric === 'total'} onClick={() => setMetric('total')}>Total spent</button>
+                  <button aria-pressed={metric === 'mine'} onClick={() => setMetric('mine')}>My share</button>
+                </div>
+                {!spending.length && <div className="empty"><b>Nothing to show</b>No expenses{metric === 'mine' ? ' include you' : ''} in these groups yet.</div>}
+                {spending.map(c => (
+                  <div key={c.currency}>
+                    <div className="panel">
+                      <div className="muted small">{c.currency} · {c.groupCount} group{c.groupCount === 1 ? '' : 's'}</div>
+                      <div style={{ font: '700 30px/1.1 var(--display)' }}>{fmtMoney(c.total, c.currency)}</div>
+                      <CategoryBar cats={c.cats} total={c.total} />
+                    </div>
+                    <div className="panel" style={{ paddingBlock: 4 }}><BreakdownList key={c.currency + metric} rows={c.rows} total={c.total} currency={c.currency} swatch /></div>
+                  </div>
+                ))}
+                {spending.length > 1 && <div className="muted small">Each currency is added up on its own. Nothing is converted.</div>}
+              </>
+            )}
+
+            {view === 'balances' && totals.length > 0 && (
               <div className="panel">
                 {totals.map(t => (
                   <div key={t.currency} className="ln" style={{ borderTop: 0 }}>
@@ -88,13 +122,13 @@ export default function OverviewPage() {
               </div>
             )}
 
-            <div className="row2" style={{ margin: '4px 0 10px' }}>
+            {view === 'balances' && <div className="row2" style={{ margin: '4px 0 10px' }}>
               <button className="btn primary" disabled={busy || !people.length} onClick={() => pdf(people)}>{busy ? 'Building…' : 'Export PDF'}</button>
               <button className="btn" onClick={() => setPeopleOpen(true)}>People</button>
-            </div>
+            </div>}
 
-            {!people.length && <div className="empty"><b>All square</b>Nobody owes you, and you owe nobody, across these trips.</div>}
-            {people.map(p => (
+            {view === 'balances' && !people.length && <div className="empty"><b>All square</b>Nobody owes you, and you owe nobody, across these groups.</div>}
+            {view === 'balances' && people.map(p => (
               <button className="panel exp" style={{ display: 'block', width: '100%', textAlign: 'left' }} key={p.key} onClick={() => setPersonKey(p.key)}>
                 <div className="phead" style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}><b style={{ fontSize: 17 }}>{p.name}</b>{p.hasPending && <span className="tag pending">Pending</span>}</div>
                 {p.currencies.map(c => (
@@ -125,7 +159,7 @@ export default function OverviewPage() {
                     {t.rows.map((r, i) => <div className="ln" key={i}><span>{r.text}<br /><span className="muted small">{fmtDate(r.date)}</span></span><span className={'a ' + (r.amount >= 0 ? '' : 'neg-t')}>{r.amount >= 0 ? '+' : '−'}{fmtMoney(Math.abs(r.amount), c.currency)}</span></div>)}
                     {t.pendingToMe > 0 && <div className="small" style={{ color: 'var(--est)', marginTop: 6 }}>{fmtMoney(t.pendingToMe, c.currency)} paid to you is waiting for your confirmation.</div>}
                     {t.pendingFromMe > 0 && <div className="small" style={{ color: 'var(--est)', marginTop: 6 }}>{fmtMoney(t.pendingFromMe, c.currency)} you paid is waiting for {open.name} to confirm.</div>}
-                    <div className="pay"><Link className="btn small" to={`/g/${t.groupId}/balances`}>Open trip</Link></div>
+                    <div className="pay"><Link className="btn small" to={`/g/${t.groupId}/balances`}>Open group</Link></div>
                   </div>
                 </details>
               ))}

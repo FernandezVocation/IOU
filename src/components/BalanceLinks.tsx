@@ -62,7 +62,7 @@ export default function BalanceLinks() {
   return (
     <div className="sect">
       <h2>Balance links</h2>
-      <div className="muted small">For people without an account. Send someone a private link and they can check their own balance, with every item and how to pay. It’s read-only: they can’t change anything, and they never see receipts or notes. They can see the trip’s expenses and how each is split, and anyone who gets the link can open it, so send it only to the person it’s for.</div>
+      <div className="muted small">For people without an account. Send someone a private link and they can check their own balance, with every item and how to pay. It’s read-only: they can’t change anything, and they never see receipts or notes. They can see the group’s expenses and how each is split, and anyone who gets the link can open it, so send it only to the person it’s for.</div>
 
       <div className="panel">
         <div className="lbl" style={{ marginTop: 0 }}>Create a link for</div>

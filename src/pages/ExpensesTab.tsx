@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { computeLedger, type Calc } from '../lib/ledger'
 import { fmtMoney, toMinor } from '../lib/money'
 import { fmtDate, fmtTime } from '../lib/format'
+import { catLabel } from '../lib/categories'
 import type { Expense } from '../lib/types'
 import { useGroup, who } from './GroupShell'
 
@@ -17,13 +18,13 @@ export default function ExpensesTab() {
   const needs = data.expenses.filter(e => R.calc[e.id]?.status !== 'confirmed')
 
   if (!data.travelers.length) {
-    return <div className="empty"><b>Add the travelers first</b>Open the Trip tab and add everyone who is splitting costs.</div>
+    return <div className="empty"><b>Add the people first</b>Open More, then Group settings, and add everyone who is splitting costs.</div>
   }
 
   let list = [...data.expenses]
   if (needOnly) list = list.filter(e => R.calc[e.id]?.status !== 'confirmed')
   const s = q.trim().toLowerCase()
-  if (s) list = list.filter(e => [e.vendor, e.location, e.category, e.notes, who(data, e.payer_id, false)].join(' ').toLowerCase().includes(s))
+  if (s) list = list.filter(e => [e.vendor, e.location, e.category, e.subcategory ?? '', e.notes, who(data, e.payer_id, false)].join(' ').toLowerCase().includes(s))
   list.sort((a, b) => b.spent_on.localeCompare(a.spent_on) || (b.spent_at ?? '').localeCompare(a.spent_at ?? '') || b.created_at.localeCompare(a.created_at))
 
   const groups = new Map<string, Expense[]>()
@@ -33,7 +34,7 @@ export default function ExpensesTab() {
     <>
       <div className="panel">
         <div className="total">
-          <div><div className="muted small">Trip total</div><div className="big">{fmtMoney(R.total, cur)}</div></div>
+          <div><div className="muted small">Group total</div><div className="big">{fmtMoney(R.total, cur)}</div></div>
           <div className="muted small" style={{ textAlign: 'right' }}>
             {data.expenses.length} expense{data.expenses.length === 1 ? '' : 's'}
             {R.counts.estimated > 0 && <><br /><span className="tag">{R.counts.estimated} estimated</span></>}
@@ -63,7 +64,7 @@ function Row({ e, c }: { e: Expense; c: Calc }) {
   const cur = data.group.currency
   const foreign = e.currency !== cur
   const n = e.splits.length
-  const meta = [e.category || 'Uncategorized', fmtTime(e.spent_at), `${who(data, e.payer_id)} paid`].filter(Boolean).join(' · ')
+  const meta = [catLabel(e), fmtTime(e.spent_at), `${who(data, e.payer_id)} paid`].filter(Boolean).join(' · ')
   const split = e.split_mode === 'equal' ? `split ${n} way${n === 1 ? '' : 's'}` : 'custom split'
   return (
     <Link className="exp" to={`/g/${data.group.id}/expense/${e.id}`}>

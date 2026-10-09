@@ -53,7 +53,7 @@ function Inner() {
   if (state.s === 'invalid') return (
     <div className="auth">
       <h1>Link not available</h1>
-      <p className="muted">This link isn’t valid any more. It may have been turned off or expired. Ask the trip organizer for a fresh one.</p>
+      <p className="muted">This link isn’t valid any more. It may have been turned off or expired. Ask the group organizer for a fresh one.</p>
     </div>
   )
   if (state.s === 'error') return (
@@ -63,7 +63,7 @@ function Inner() {
       <button className="btn block" onClick={load}>Try again</button>
     </div>
   )
-  if (!view?.model) return <div className="auth"><h1>Nothing to show</h1><p className="muted">This link doesn’t point to anyone on the trip any more. Ask the organizer for a new one.</p></div>
+  if (!view?.model) return <div className="auth"><h1>Nothing to show</h1><p className="muted">This link doesn’t point to anyone in the group any more. Ask the organizer for a new one.</p></div>
 
   const m = view.model
   const cur = m.currency
@@ -72,7 +72,7 @@ function Inner() {
 
   async function pdf() {
     setBusy(true)
-    try { downloadBlob(await buildInvoicePdf(m), `${slug(m.groupName)}-balance-${slug(state.s === 'ok' ? state.trip.label : 'trip')}-${todayStr()}.pdf`) }
+    try { downloadBlob(await buildInvoicePdf(m), `${slug(m.groupName)}-balance-${slug(state.s === 'ok' ? state.trip.label : 'group')}-${todayStr()}.pdf`) }
     catch (e) { toast(friendly(e)) } finally { setBusy(false) }
   }
 
@@ -116,7 +116,7 @@ function Inner() {
 
       <div className="panel">
         <h2>Summary</h2>
-        <div className="ln"><span>Total share of trip costs</span><span className="a">{fmtMoney(m.totals.share, cur)}</span></div>
+        <div className="ln"><span>Total share of group costs</span><span className="a">{fmtMoney(m.totals.share, cur)}</span></div>
         <div className="ln"><span>Less: expenses you paid</span><span className="a">− {fmtMoney(m.totals.paid, cur)}</span></div>
         {m.totals.made > 0 && <div className="ln"><span>Less: payments you made</span><span className="a">− {fmtMoney(m.totals.made, cur)}</span></div>}
         {m.totals.received > 0 && <div className="ln"><span>Plus: payments you received</span><span className="a">+ {fmtMoney(m.totals.received, cur)}</span></div>}
@@ -153,7 +153,7 @@ function Inner() {
       )}
 
       <button className="btn block" style={{ marginTop: 16 }} onClick={pdf} disabled={busy}>{busy ? 'Building…' : 'Download as PDF'}</button>
-      <div className="muted small" style={{ marginTop: 14 }}>This page is read-only and updates when the trip does. If something looks wrong, tell the trip organizer.</div>
+      <div className="muted small" style={{ marginTop: 14 }}>This page is read-only and updates when the group does. If something looks wrong, tell the group organizer.</div>
     </div>
   )
 }

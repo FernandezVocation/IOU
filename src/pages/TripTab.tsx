@@ -6,6 +6,7 @@ import { isValidCurrency, parseNum } from '../lib/money'
 import { useAuth } from '../lib/auth'
 import { Avatar, ConfirmDialog, useArm, useToast } from '../components/ui'
 import BalanceLinks from '../components/BalanceLinks'
+import KindPicker from '../components/KindPicker'
 import { useGroup } from './GroupShell'
 
 const PALETTE = ['#2B44FF', '#0E7C61', '#C23B22', '#8A4FD3', '#B07A00', '#0B8FA8', '#C7366F', '#5B6B2E']
@@ -18,6 +19,7 @@ export default function TripTab() {
   const { user } = useAuth()
   const g = data.group, cur = g.currency
   const [name, setName] = useState(g.name)
+  const [kind, setKind] = useState(g.kind || 'Trip')
   const [newPerson, setNewPerson] = useState('')
   const [addCur, setAddCur] = useState('')
   const [confirmGroup, setConfirmGroup] = useState(false)
@@ -36,12 +38,12 @@ export default function TripTab() {
     try { await navigator.clipboard.writeText(link); toast('Invite link copied.') } catch { toast('Could not copy. Press and hold the link to copy it.') }
   }
   async function shareLink() {
-    if (navigator.share) { try { await navigator.share({ title: `Join ${g.name}`, text: `Join our trip "${g.name}" on Trip Ledger`, url: link }) } catch { /* cancelled */ } } else copyLink()
+    if (navigator.share) { try { await navigator.share({ title: `Join ${g.name}`, text: `Join "${g.name}" on IOU`, url: link }) } catch { /* cancelled */ } } else copyLink()
   }
   async function addPerson() {
     const n = newPerson.trim()
     if (!n) return
-    if (data.travelers.some(t => t.name.toLowerCase() === n.toLowerCase())) { toast('That name is already on the trip.'); return }
+    if (data.travelers.some(t => t.name.toLowerCase() === n.toLowerCase())) { toast('That name is already in the group.'); return }
     if (await run(supabase.from('travelers').insert({ group_id: g.id, name: n, color: PALETTE[data.travelers.length % PALETTE.length], sort_order: Date.now() }))) setNewPerson('')
   }
   async function removePerson(id: string) {
@@ -78,7 +80,7 @@ export default function TripTab() {
     <>
       <div className="sect" style={{ marginTop: 8 }}>
         <h2>Invite people</h2>
-        <div className="muted small">Anyone with this link can join after signing in. They can add and edit expenses. Travelers who only appear in splits do not need to join.</div>
+        <div className="muted small">Anyone with this link can join after signing in. They can add and edit expenses. People who only appear in splits do not need to join.</div>
         <div className="panel">
           <div className="code">{link}</div>
           <div className="row2" style={{ marginTop: 10 }}>
@@ -99,7 +101,7 @@ export default function TripTab() {
       <BalanceLinks />
 
       <div className="sect">
-        <h2>Travelers</h2>
+        <h2>People</h2>
         <div className="muted small">Everyone who splits costs. The one marked “you” is linked to your account.</div>
         {data.travelers.map(t => {
           const k = 'delp:' + t.id
@@ -114,10 +116,10 @@ export default function TripTab() {
           )
         })}
         <div className="prow">
-          <input type="text" value={newPerson} onChange={e => setNewPerson(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addPerson() }} placeholder="Add a traveler" maxLength={40} aria-label="New traveler name" />
+          <input type="text" value={newPerson} onChange={e => setNewPerson(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addPerson() }} placeholder="Add a person" maxLength={40} aria-label="New traveler name" />
           <button className="btn primary" onClick={addPerson}>Add</button>
         </div>
-        <div className="muted small">A traveler who is on an expense or payment can’t be removed.</div>
+        <div className="muted small">A person who is on an expense or payment can’t be removed.</div>
       </div>
 
       <div className="sect">
@@ -148,16 +150,23 @@ export default function TripTab() {
       </div>
 
       <div className="sect">
-        <h2>Trip settings</h2>
+        <h2>Group settings</h2>
         <div className="panel">
-          <label className="lbl" style={{ marginTop: 0 }} htmlFor="gname">Trip name</label>
+          <label className="lbl" style={{ marginTop: 0 }} htmlFor="gname">Group name</label>
           <input id="gname" type="text" value={name} maxLength={80} onChange={e => setName(e.target.value)} disabled={!data.isOwner}
             onBlur={() => { const v = name.trim(); if (v && v !== g.name) run(supabase.from('groups').update({ name: v }).eq('id', g.id)); else setName(g.name) }} />
+          <span className="lbl">Type</span>
+          {data.isOwner
+            ? <>
+                <KindPicker value={kind} onChange={setKind} id="gkind" />
+                {kind.trim() && kind.trim() !== (g.kind || 'Trip') && <button className="btn small" style={{ marginTop: 8 }} onClick={() => run(supabase.from('groups').update({ kind: kind.trim() }).eq('id', g.id), 'Type saved.')}>Save type</button>}
+              </>
+            : <div>{g.kind || 'Trip'}</div>}
           <label className="lbl" htmlFor="gcur">Settle currency</label>
           <select id="gcur" value={cur} disabled={!data.isOwner || hasMoney} onChange={e => run(supabase.from('groups').update({ currency: e.target.value }).eq('id', g.id))}>
             {[...new Set([cur, ...COMMON_CURRENCIES])].map(c => <option key={c}>{c}</option>)}
           </select>
-          <div className="muted small" style={{ marginTop: 6 }}>{hasMoney ? 'Locked because expenses exist, so statement amounts keep their meaning.' : data.isOwner ? 'Set by the trip owner.' : 'Only the trip owner can change this.'}</div>
+          <div className="muted small" style={{ marginTop: 6 }}>{hasMoney ? 'Locked because expenses exist, so statement amounts keep their meaning.' : data.isOwner ? 'Set by the group owner.' : 'Only the group owner can change this.'}</div>
         </div>
       </div>
 
@@ -177,14 +186,14 @@ export default function TripTab() {
 
       <div className="sect">
         {data.isOwner ? (
-          <button className="btn danger block" onClick={() => setConfirmGroup(true)}>Delete trip</button>
+          <button className="btn danger block" onClick={() => setConfirmGroup(true)}>Delete group</button>
         ) : (
-          <button className={'btn danger block' + (arm.is('leave') ? ' armed' : '')} onClick={() => arm.is('leave') ? leave() : arm.arm('leave')}>{arm.is('leave') ? 'Tap again to leave' : 'Leave trip'}</button>
+          <button className={'btn danger block' + (arm.is('leave') ? ' armed' : '')} onClick={() => arm.is('leave') ? leave() : arm.arm('leave')}>{arm.is('leave') ? 'Tap again to leave' : 'Leave group'}</button>
         )}
       </div>
       {confirmGroup && (
-        <ConfirmDialog title={`Delete “${g.name}”?`} confirmLabel="Delete trip" onCancel={() => setConfirmGroup(false)} onConfirm={() => { setConfirmGroup(false); deleteGroup() }}>
-          This permanently removes the trip for <b>everyone</b>: all expenses, payments, receipts and balance links. Download your reports and receipts first if you need a copy. This can’t be undone.
+        <ConfirmDialog title={`Delete “${g.name}”?`} confirmLabel="Delete group" onCancel={() => setConfirmGroup(false)} onConfirm={() => { setConfirmGroup(false); deleteGroup() }}>
+          This permanently removes the group for <b>everyone</b>: all expenses, payments, receipts and balance links. Download your reports and receipts first if you need a copy. This can’t be undone.
         </ConfirmDialog>
       )}
     </>

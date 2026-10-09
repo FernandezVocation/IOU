@@ -76,7 +76,7 @@ export default function ReportsTab() {
       </div>
 
       <div className="panel">
-        <h2>Full trip report</h2>
+        <h2>Full group report</h2>
         <div className="muted small">Every transaction with its details and split, each person’s balance, the payment plan, and why each amount is owed. Excel also lists each receipt file next to its transaction.</div>
         <div className="row2" style={{ marginTop: 12 }}>
           <button className="btn primary" disabled={busy !== null} onClick={() => fullReport('xlsx')}>{busy === 'xlsx' ? 'Building…' : 'Excel'}</button>
@@ -110,7 +110,7 @@ export default function ReportsTab() {
         <button className="btn primary block" style={{ marginTop: 10 }} disabled={!billTo.length || busy !== null} onClick={makeInvoice}>
           {busy === 'invoice' || (busy && busy.startsWith('Adding')) || busy === 'Building invoice…' ? busy : 'Create invoice PDF'}
         </button>
-        <div className="muted small" style={{ marginTop: 8 }}>The PDF shows names, vendors and amounts for this trip. Only send it to people you’re happy to share that with.</div>
+        <div className="muted small" style={{ marginTop: 8 }}>The PDF shows names, vendors and amounts for this group. Only send it to people you’re happy to share that with.</div>
       </div>
 
       <div className="muted small">Looking for receipts? Find them in the <Link to={`/g/${data.group.id}/receipts`}>Receipts tab</Link>.</div>

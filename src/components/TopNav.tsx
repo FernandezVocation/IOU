@@ -10,7 +10,7 @@ export default function TopNav() {
   return (
     <nav className="tabs" aria-label="Main">
       <div className="in two">
-        <NavLink to="/" end>{icons.trips}<span>Trips</span></NavLink>
+        <NavLink to="/" end>{icons.trips}<span>Groups</span></NavLink>
         <NavLink to="/overview">{icons.overview}<span>Overview</span></NavLink>
       </div>
     </nav>

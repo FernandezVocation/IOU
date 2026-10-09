@@ -1,4 +1,4 @@
-import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
+import { Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import { configured } from './lib/supabase'
 import { useAuth } from './lib/auth'
 import { ToastProvider, Spinner } from './components/ui'
@@ -15,6 +15,11 @@ import ReportsTab from './pages/ReportsTab'
 import SharedPage from './pages/SharedPage'
 import OverviewPage from './pages/OverviewPage'
 import ExpenseEditor from './pages/ExpenseEditor'
+import BreakdownTab from './pages/BreakdownTab'
+import MoreTab from './pages/MoreTab'
+
+/** Old links to the Trip tab now land on group settings. */
+function ToSettings() { const { id = '' } = useParams(); return <Navigate to={`/g/${id}/settings`} replace /> }
 
 function RequireAuth() {
   const { user, loading } = useAuth()
@@ -53,7 +58,10 @@ export default function App() {
               <Route path="receipts" element={<ReceiptsTab />} />
               <Route path="balances" element={<BalancesTab />} />
               <Route path="reports" element={<ReportsTab />} />
-              <Route path="trip" element={<TripTab />} />
+              <Route path="breakdown" element={<BreakdownTab />} />
+              <Route path="more" element={<MoreTab />} />
+              <Route path="settings" element={<TripTab />} />
+              <Route path="trip" element={<ToSettings />} />
             </Route>
             <Route path="expense/:eid" element={<ExpenseEditor />} />
           </Route>

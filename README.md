@@ -1,10 +1,13 @@
-# Trip Ledger
+# IOU
 
 A phone-first web app for tracking and splitting expenses on group trips.
 
 - Anyone can create a trip, invite others with a link, and everyone logs expenses live from their own phone.
 - Each trip has one **settle currency** (set by whoever creates it). Balances are always in that currency.
 - Local expense: type the amount. Foreign expense: flip **"Paid in a different currency"**, enter the local amount, and later come back and enter what your card statement actually charged in the settle currency. Until then it shows as an estimate (if you set a rate) or is left out of balances.
+- **Categories:** pick a category (Food, Drinks, Grocery, Transportation, Housing, Attractions, Activities, Entertainment, Shopping, Souvenirs, Fees, Fines) and then a sub-category (for example Transportation › Train). Both levels also accept any text you type ("Custom…"), and customs you used before come back as chips.
+- **Breakdown tab:** every expense, grouped by category, sub-category, date or vendor, as total spent or just your share, with drill-down to the individual expenses. The Overview has the same breakdown across groups, one currency at a time.
+- **Groups:** a group can be a trip, a household, an event, or anything you type. Light, dark or automatic appearance.
 - Splits: equal among any people, by percent, exact amounts, or shares.
 - Balances update in real time, with a line-by-line "why" for every amount owed.
 - Receipt photos/PDFs are stored per expense, browsable in a **Receipts** tab (by date, vendor or category, with a "missing a receipt" list), and downloadable as one ZIP with descriptive file names.
@@ -20,10 +23,11 @@ A phone-first web app for tracking and splitting expenses on group trips.
 ## 1. Set up Supabase (about 10 minutes)
 
 1. Create a free project at <https://supabase.com>.
-2. Open **SQL Editor** and run these three files, **in order, each once**:
+2. Open **SQL Editor** and run these four files, **in order, each once**:
    1. `supabase/migrations/0001_init.sql`: tables, security rules, invite/join functions, the private `receipts` storage bucket, realtime.
    2. `supabase/migrations/0002_share_links.sql`: read-only balance links for people without accounts.
-   3. `supabase/migrations/0003_payments_and_overview.sql`: payments you can record in part and have the receiver confirm, "who entered / edited it", and the cross-trip Overview. (If you already ran 0001 and 0002 earlier, run only the new one.)
+   3. `supabase/migrations/0003_payments_and_overview.sql`: payments you can record in part and have the receiver confirm, "who entered / edited it", and the cross-trip Overview. 
+   4. `supabase/migrations/0004_categories_and_group_types.sql`: sub-categories on expenses and a type for each group (Trip, Household, Event, or anything typed). **Run this one before you deploy the matching app update**, because the new app calls it. (If you already ran 0001 to 0003 earlier, run only the new one.)
 3. **Authentication → URL Configuration**
    - *Site URL*: your deployed address (for example `https://trips.example.com`).
    - *Redirect URLs*: add `https://trips.example.com/**` and `http://localhost:5173/**`.
@@ -51,11 +55,11 @@ Then update the Supabase *Site URL* / *Redirect URLs* (step 3 above) to the real
 
 ## Host it on Cloudflare (nothing runs on your computer)
 
-1. Finish the Supabase part above (run the three SQL files, copy the Project URL and anon key).
+1. Finish the Supabase part above (run the four SQL files, copy the Project URL and anon key).
 2. Put the project files on GitHub (a new repository; on the web page choose **uploading an existing file** and drag in the *contents* of the unzipped `trip-ledger` folder, so `package.json` and `wrangler.jsonc` are at the top level).
-3. In the Cloudflare dashboard open **Workers & Pages** → **Create application** → **Import a repository**, connect GitHub and pick the repository. Keep the Worker name `trip-ledger`, set **Build command** `npm run build` and leave **Deploy command** as `npx wrangler deploy`.
+3. In the Cloudflare dashboard open **Workers & Pages** → **Create application** → **Import a repository**, connect GitHub and pick the repository. Keep the Worker name `iou` (it must match `name` in `wrangler.jsonc`), set **Build command** `npm run build` and leave **Deploy command** as `npx wrangler deploy`.
 4. Add two **build variables** (the build-time ones, not runtime): `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (optionally `NODE_VERSION` = `20`). Deploy. If the first build ran before you added them, add them and retry the build.
-5. Copy the address Cloudflare gives you (`https://trip-ledger.<your-subdomain>.workers.dev`) and put it in Supabase: **Authentication → URL Configuration → Site URL**, and add `https://<that address>/**` under Redirect URLs.
+5. Copy the address Cloudflare gives you (`https://iou.<your-subdomain>.workers.dev`) and put it in Supabase: **Authentication → URL Configuration → Site URL**, and add `https://<that address>/**` under Redirect URLs.
 6. To update the app later, upload the changed files to GitHub; Cloudflare rebuilds automatically.
 
 `wrangler.jsonc` tells Cloudflare to serve the built site as a single-page app, so invite and balance links work.
@@ -124,7 +128,7 @@ The anon key in the browser is public by design. **Never put the `service_role` 
 ## Tests
 
 ```bash
-npm test        # ledger math, payments, overview, invoices, receipts ZIP, exports, balance links, and the screens (116 tests)
+npm test        # ledger math, payments, overview, invoices, receipts ZIP, exports, balance links, and the screens, categories, breakdown and themes (146 tests)
 ```
 
 Database rules are tested against a real Postgres: `rls_test.sql` (52 checks: cross-group reads/writes, invite flow, owner rules, currency lock, storage access) and `payments_test.sql` (70 checks: who may confirm, edit, undo and delete a payment, partial amounts, cross-trip batches that succeed or fail as a whole, private contacts, unforgeable authors) and `share_links_test.sql` (48 checks: an anonymous visitor cannot read any table or call any other function, tokens cannot be guessed or crossed between trips, nothing private is returned, expiry and turn-off work). Run the second on a fresh database (rebuild it first), then `SHARED_SHAPE_JSON=/tmp/shared_shape.json npx vitest run src/lib/shared.test.ts` checks that the real database output feeds the app's math. Needs a local Postgres with the Supabase roles stubbed:
@@ -135,7 +139,8 @@ psql -d tl -f supabase/tests/stub.sql                     # fake auth/storage sc
 psql -d tl -v ON_ERROR_STOP=1 -f supabase/migrations/0001_init.sql
 psql -d tl -v ON_ERROR_STOP=1 -f supabase/migrations/0002_share_links.sql
 psql -d tl -v ON_ERROR_STOP=1 -f supabase/migrations/0003_payments_and_overview.sql
-psql -d tl -f supabase/tests/rls_test.sql | grep -E "PASS|FAIL"      # then rebuild the database and run share_links_test.sql, payments_test.sql the same way
+psql -d tl -v ON_ERROR_STOP=1 -f supabase/migrations/0004_categories_and_group_types.sql
+psql -d tl -f supabase/tests/rls_test.sql | grep -E "PASS|FAIL"      # then rebuild the database and run share_links_test.sql, payments_test.sql, categories_test.sql the same way
 ```
 
 ## Known limits (honest list)
@@ -160,6 +165,7 @@ psql -d tl -f supabase/tests/rls_test.sql | grep -E "PASS|FAIL"      # then rebu
 supabase/migrations/0001_init.sql   schema, RLS, RPCs, storage rules
 supabase/migrations/0002_share_links.sql   balance links for non-account people
 supabase/migrations/0003_payments_and_overview.sql   payments (partial, Sent/Received), authorship, cross-trip contacts
+supabase/migrations/0004_categories_and_group_types.sql   sub-categories, group types
 supabase/tests/                     database tests + stub
 src/lib/money.ts, ledger.ts         integer-cents math and the balance/"why" engine
 src/lib/exporters.ts                Excel + PDF reports

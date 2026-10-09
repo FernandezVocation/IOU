@@ -1,5 +1,4 @@
 export const COMMON_CURRENCIES = ['CAD', 'USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CHF', 'MXN', 'NZD', 'INR', 'CNY', 'THB', 'KRW', 'SEK', 'NOK', 'DKK', 'AED', 'TRY', 'BRL', 'ZAR']
-export const CATEGORIES = ['Food & drink', 'Groceries', 'Lodging', 'Transport', 'Flights', 'Activities', 'Shopping', 'Fees & tips', 'Other']
 
 export const fmtDate = (d: string): string => {
   try { return new Date(d + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) } catch { return d }

@@ -1,17 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { CATEGORIES, COMMON_CURRENCIES, friendly, nowTime, todayStr } from '../lib/format'
+import { COMMON_CURRENCIES, friendly, nowTime, todayStr } from '../lib/format'
 import { allocate, currencyDigits, fmtMoney, fromMinor, isValidCurrency, parseNum, toMinor } from '../lib/money'
 import type { Expense, Receipt, SplitMode } from '../lib/types'
 import { Avatar, ConfirmDialog, useToast } from '../components/ui'
+import CategoryPicker from '../components/CategoryPicker'
 import { useAuth } from '../lib/auth'
 import { userName } from '../lib/payments'
 import { useGroup } from './GroupShell'
 
 interface NewFile { blob: Blob; type: string; name: string; preview: string }
 interface Form {
-  date: string; time: string; vendor: string; location: string; category: string; notes: string
+  date: string; time: string; vendor: string; location: string; category: string; subcategory: string; notes: string
   amount: string; foreign: boolean; pick: string; otherCur: string; settled: string
   payerId: string; mode: SplitMode; entries: Record<string, string>
 }
@@ -70,7 +71,7 @@ export default function ExpenseEditor() {
     const inList = COMMON_CURRENCIES.includes(startCur)
     setForm({
       date: existing?.spent_on ?? todayStr(), time: existing ? (existing.spent_at ?? '').slice(0, 5) : nowTime(),
-      vendor: existing?.vendor ?? '', location: existing?.location ?? '', category: existing?.category ?? '', notes: existing?.notes ?? '',
+      vendor: existing?.vendor ?? '', location: existing?.location ?? '', category: existing?.category ?? '', subcategory: existing?.subcategory ?? '', notes: existing?.notes ?? '',
       amount: existing ? String(existing.amount) : '', foreign, pick: inList ? startCur : '__other', otherCur: inList ? '' : startCur,
       settled: existing?.settled_amount != null ? String(existing.settled_amount) : '',
       payerId: existing?.payer_id ?? data.me?.id ?? data.travelers[0]?.id ?? '',
@@ -101,7 +102,7 @@ export default function ExpenseEditor() {
   const weights = form ? ids.map(i => (form.mode === 'equal' ? 1 : Math.max(0, parseNum(form.entries[i]) || 0))) : []
   const preview = useMemo(() => (totalMinor > 0 ? allocate(totalMinor, weights) : weights.map(() => 0)), [totalMinor, weights.join(',')]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!existing && eid !== 'new') return <div className="app"><div className="notice err">That expense no longer exists.</div><Link className="btn block" to={back}>Back to the trip</Link></div>
+  if (!existing && eid !== 'new') return <div className="app"><div className="notice err">That expense no longer exists.</div><Link className="btn block" to={back}>Back to the group</Link></div>
   if (!form) return null
   const f = form
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm(p => (p ? { ...p, [k]: v } : p))
@@ -159,7 +160,7 @@ export default function ExpenseEditor() {
     const splits = ids.map(i => ({ traveler_id: i, value: f.mode === 'equal' ? 1 : parseNum(f.entries[i]) }))
     const { error } = await supabase.rpc('save_expense', {
       p_id: id, p_group: g.id,
-      p: { spent_on: f.date, spent_at: f.time || '', vendor: f.vendor.trim(), location: f.location.trim(), category: f.category.trim(), notes: f.notes.trim(), amount: amountNum, currency: cur, settled_amount: settled, payer_id: f.payerId, split_mode: f.mode },
+      p: { spent_on: f.date, spent_at: f.time || '', vendor: f.vendor.trim(), location: f.location.trim(), category: f.category.trim(), subcategory: f.category.trim() ? f.subcategory.trim() : '', notes: f.notes.trim(), amount: amountNum, currency: cur, settled_amount: settled, payer_id: f.payerId, split_mode: f.mode },
       p_splits: splits,
     })
     if (error) { toast(friendly(error)); setSaving(false); return }
@@ -199,8 +200,8 @@ export default function ExpenseEditor() {
   const rate = data.rates[cur]
   const settledNum = parseNum(f.settled)
   const hint = settledNum > 0 && amountNum > 0 ? `Effective rate: 1 ${cur} = ${(settledNum / amountNum).toFixed(4)} ${base}`
-    : rate > 0 && amountNum > 0 ? `Estimated at your trip rate (1 ${cur} = ${rate} ${base}): ≈ ${fmtMoney(Math.round(amountNum * rate * 10 ** currencyDigits(base)), base)}. Fill in the real amount when your statement posts.`
-    : `No ${cur || 'currency'} rate set. Enter the ${base} amount now or add a rate in the Trip tab, otherwise this expense is not counted.`
+    : rate > 0 && amountNum > 0 ? `Estimated at your group’s rate (1 ${cur} = ${rate} ${base}): ≈ ${fmtMoney(Math.round(amountNum * rate * 10 ** currencyDigits(base)), base)}. Fill in the real amount when your statement posts.`
+    : `No ${cur || 'currency'} rate set. Enter the ${base} amount now or add a rate in Group settings, otherwise this expense is not counted.`
   const currencyChoices = [...new Set([...COMMON_CURRENCIES.filter(c => c !== base), ...(isValidCurrency(cur) && cur !== base ? [cur] : [])])]
 
   return (
@@ -255,14 +256,10 @@ export default function ExpenseEditor() {
           <div><label className="lbl" htmlFor="date">Date</label><input type="date" id="date" value={f.date} onChange={e => set('date', e.target.value)} /></div>
           <div><label className="lbl" htmlFor="time">Time</label><input type="time" id="time" value={f.time} onChange={e => set('time', e.target.value)} /></div>
         </div>
-        <div className="row2">
-          <div>
-            <label className="lbl" htmlFor="cat">Category</label>
-            <input type="text" id="cat" list="cats" maxLength={60} autoComplete="off" value={f.category} onChange={e => set('category', e.target.value)} />
-            <datalist id="cats">{[...new Set([...CATEGORIES, ...data.expenses.map(e => e.category).filter(Boolean)])].map(c => <option key={c} value={c} />)}</datalist>
-          </div>
-          <div><label className="lbl" htmlFor="loc">Location</label><input type="text" id="loc" maxLength={120} value={f.location} onChange={e => set('location', e.target.value)} /></div>
-        </div>
+        <CategoryPicker category={f.category} subcategory={f.subcategory} history={data.expenses}
+          onChange={(c, sc) => setForm(p => (p ? { ...p, category: c, subcategory: sc } : p))} />
+        <label className="lbl" htmlFor="loc">Location</label>
+        <input type="text" id="loc" maxLength={120} value={f.location} onChange={e => set('location', e.target.value)} />
 
         <label className="lbl" htmlFor="payer">Paid by</label>
         <select id="payer" value={f.payerId} onChange={e => set('payerId', e.target.value)}>
@@ -337,7 +334,7 @@ export default function ExpenseEditor() {
       {confirmDel && existing && (
         <ConfirmDialog title="Delete this expense?" busy={saving} onCancel={() => setConfirmDel(false)} onConfirm={remove}>
           <b>{existing.vendor || 'This expense'}</b> ({fmtMoney(toMinor(existing.amount, existing.currency), existing.currency)} on {existing.spent_on})
-          {existing.receipts.length ? ` and its ${existing.receipts.length} receipt${existing.receipts.length === 1 ? '' : 's'}` : ''} will be removed for everyone on the trip, and balances will change. This can’t be undone.
+          {existing.receipts.length ? ` and its ${existing.receipts.length} receipt${existing.receipts.length === 1 ? '' : 's'}` : ''} will be removed for everyone in the group, and balances will change. This can’t be undone.
         </ConfirmDialog>
       )}
       {light && <button className="light" onClick={() => setLight(null)} aria-label="Close photo"><img src={light} alt="Receipt" /></button>}

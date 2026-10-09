@@ -48,8 +48,8 @@ export default function AuthPage() {
 
   return (
     <div className="auth">
-      <h1>Trip Ledger</h1>
-      <p className="muted" style={{ marginTop: 0 }}>Log every expense on a group trip and see who owes whom, in real time.</p>
+      <h1>IOU</h1>
+      <p className="muted" style={{ marginTop: 0 }}>Log shared expenses for any group and see who owes whom, in real time.</p>
       <div className="seg" role="group" aria-label="Sign in method" style={{ margin: '18px 0 4px' }}>
         <button type="button" aria-pressed={mode === 'in'} onClick={() => setMode('in')}>Sign in</button>
         <button type="button" aria-pressed={mode === 'up'} onClick={() => setMode('up')}>Create account</button>

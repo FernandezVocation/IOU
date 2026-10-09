@@ -70,7 +70,7 @@ export default function RecordAcrossSheet({ person, onClose, onSaved }: { person
   const dirs: Dir[] = (['theyPaid', 'iPaid'] as Dir[]).filter(d => currenciesFor(d).length)
 
   async function save() {
-    if (bad) { toast('A trip can’t take more than is owed there.'); return }
+    if (bad) { toast('A group can’t take more than is owed there.'); return }
     if (!sum) { toast('Enter an amount.'); return }
     setBusy(true)
     const method = pick === '__other' ? other.trim() : pick
@@ -83,13 +83,13 @@ export default function RecordAcrossSheet({ person, onClose, onSaved }: { person
     if (error) { toast(friendly(error)); return }
     const res = data as Array<{ status: string }>
     const confirmed = res.filter(x => x.status === 'confirmed').length
-    toast(`Recorded in ${res.length} trip${res.length === 1 ? '' : 's'}${confirmed === res.length ? ', confirmed.' : `: ${confirmed} confirmed, ${res.length - confirmed} pending.`}`)
+    toast(`Recorded in ${res.length} group${res.length === 1 ? '' : 's'}${confirmed === res.length ? ', confirmed.' : `: ${confirmed} confirmed, ${res.length - confirmed} pending.`}`)
     onSaved(); onClose()
   }
 
   return (
     <Sheet title={`Payment with ${person.name}`} onClose={onClose}>
-      {dirs.length === 0 && <div className="empty"><b>Nothing to record</b>There’s no outstanding balance with {person.name}. Pending payments are confirmed inside each trip.</div>}
+      {dirs.length === 0 && <div className="empty"><b>Nothing to record</b>There’s no outstanding balance with {person.name}. Pending payments are confirmed inside each group.</div>}
       {dirs.length > 0 && (
         <>
           <div className="seg" role="group" aria-label="Direction">
@@ -97,11 +97,11 @@ export default function RecordAcrossSheet({ person, onClose, onSaved }: { person
           </div>
           <label className="lbl" htmlFor="rc">Currency</label>
           <select id="rc" value={cur} onChange={e => reset(dir, e.target.value)}>{currenciesFor(dir).map(c => <option key={c}>{c}</option>)}</select>
-          <div className="muted small" style={{ marginTop: 6 }}>Each trip settles in its own currency, so a payment can only be spread over trips in the same one.</div>
+          <div className="muted small" style={{ marginTop: 6 }}>Each group settles in its own currency, so a payment can only be spread over groups in the same one.</div>
 
           <label className="lbl" htmlFor="ra">Total amount ({cur})</label>
           <input className="inp big" id="ra" inputMode="decimal" value={amount} onChange={e => onAmount(e.target.value)} placeholder="0.00" />
-          <div className="muted small" style={{ marginTop: 6 }}>{dir === 'theyPaid' ? `${person.name} owes you` : `You owe ${person.name}`} {fmtMoney(target, cur)}{offset > 0 ? ` overall (${fmtMoney(totalOwed, cur)} across ${trips.length} trip${trips.length === 1 ? '' : 's'}, less ${fmtMoney(offset, cur)} the other way in your other trips)` : ` across ${trips.length} trip${trips.length === 1 ? '' : 's'}`}. Anything less is a partial payment.</div>
+          <div className="muted small" style={{ marginTop: 6 }}>{dir === 'theyPaid' ? `${person.name} owes you` : `You owe ${person.name}`} {fmtMoney(target, cur)}{offset > 0 ? ` overall (${fmtMoney(totalOwed, cur)} across ${trips.length} group${trips.length === 1 ? '' : 's'}, less ${fmtMoney(offset, cur)} the other way in your other groups)` : ` across ${trips.length} group${trips.length === 1 ? '' : 's'}`}. Anything less is a partial payment.</div>
 
           <div className="lbl">Applied to</div>
           <div className="panel" style={{ marginTop: 0 }}>
@@ -111,7 +111,7 @@ export default function RecordAcrossSheet({ person, onClose, onSaved }: { person
                 <input className="inp sv" inputMode="decimal" value={alloc[r.k] ?? ''} onChange={e => onAlloc(r.k, e.target.value)} aria-label={`Amount for ${r.t.groupName}`} placeholder="0.00" />
               </div>
             ))}
-            <div className={'status ' + (bad ? 'bad' : 'ok')}>{bad ? `${bad.t.groupName}: more than the ${fmtMoney(Math.abs(bad.t.net), cur)} owed there.` : `Recording ${fmtMoney(sum, cur)}${sum && sum < target ? `, leaving ${fmtMoney(target - sum, cur)} owed` : sum && sum === target ? ', settling everything' : sum > target ? `, ${fmtMoney(sum - target, cur)} more than is owed overall (the extra becomes a credit)` : ''}.${offset > 0 && sum >= target ? ' Some trips will still show a small balance each way; they cancel out.' : ''}`}</div>
+            <div className={'status ' + (bad ? 'bad' : 'ok')}>{bad ? `${bad.t.groupName}: more than the ${fmtMoney(Math.abs(bad.t.net), cur)} owed there.` : `Recording ${fmtMoney(sum, cur)}${sum && sum < target ? `, leaving ${fmtMoney(target - sum, cur)} owed` : sum && sum === target ? ', settling everything' : sum > target ? `, ${fmtMoney(sum - target, cur)} more than is owed overall (the extra becomes a credit)` : ''}.${offset > 0 && sum >= target ? ' Some groups will still show a small balance each way; they cancel out.' : ''}`}</div>
           </div>
 
           <div className="row2">
@@ -121,10 +121,10 @@ export default function RecordAcrossSheet({ person, onClose, onSaved }: { person
           </div>
           {pick === '__other' && <input type="text" className="inp" style={{ marginTop: 8 }} maxLength={40} value={other} onChange={e => setOther(e.target.value)} placeholder="Method" aria-label="Other method" />}
           <label className="lbl" htmlFor="rn">Note</label>
-          <textarea id="rn" maxLength={300} value={note} onChange={e => setNote(e.target.value)} placeholder="Added to each trip’s payment" />
+          <textarea id="rn" maxLength={300} value={note} onChange={e => setNote(e.target.value)} placeholder="Added to each group’s payment" />
 
           <div className="notice" style={{ background: 'var(--soft)', color: 'var(--ink)' }}>
-            {dir === 'theyPaid' ? 'You’re the one receiving it, so it’s marked Received right away in every trip.' : `Shows as Sent in each trip until ${person.name} confirms they received it (or another member does, if they have no account).`}
+            {dir === 'theyPaid' ? 'You’re the one receiving it, so it’s marked Received right away in every group.' : `Shows as Sent in each group until ${person.name} confirms they received it (or another member does, if they have no account).`}
           </div>
           <button className="btn primary block" style={{ marginTop: 12 }} onClick={save} disabled={busy || !sum || !!bad}>{busy ? 'Recording…' : 'Record payment'}</button>
         </>

@@ -38,17 +38,17 @@ export default function JoinPage() {
     nav('/g/' + (data as string), { replace: true })
   }
 
-  if (error && pv === undefined) return <div className="app"><div className="notice err" role="alert">{error}</div><Link to="/">Back to your trips</Link></div>
+  if (error && pv === undefined) return <div className="app"><div className="notice err" role="alert">{error}</div><Link to="/">Back to your groups</Link></div>
   if (pv === undefined) return <Spinner />
   if (pv === null) return (
-    <div className="app"><div className="empty"><b>This invite is no longer valid</b>Ask the trip owner for a fresh link.</div><Link className="btn block" to="/">Back to your trips</Link></div>
+    <div className="app"><div className="empty"><b>This invite is no longer valid</b>Ask the group owner for a fresh link.</div><Link className="btn block" to="/">Back to your groups</Link></div>
   )
 
   return (
     <div className="app">
       <div className="top"><div><h1>Join {pv.name}</h1><div className="sub">Settles in {pv.currency} · {pv.member_count} {pv.member_count === 1 ? 'person' : 'people'} so far</div></div></div>
       <div className="panel">
-        <h2>Who are you on this trip?</h2>
+        <h2>Who are you in this group?</h2>
         <div className="muted small">If the group already added your name, pick it so your expenses line up.</div>
         {pv.travelers.map(t => (
           <label className="radio" key={t.id}><input type="radio" name="who" checked={choice === t.id} onChange={() => setChoice(t.id)} />{t.name}</label>
@@ -56,7 +56,7 @@ export default function JoinPage() {
         <label className="radio"><input type="radio" name="who" checked={choice === '__new'} onChange={() => setChoice('__new')} />I’m someone new</label>
         {choice === '__new' && <input type="text" value={newName} onChange={e => setNewName(e.target.value)} maxLength={40} aria-label="Your name" placeholder="Your name" />}
         {error && <div className="notice err" role="alert">{error}</div>}
-        <button className="btn primary block" style={{ marginTop: 16 }} onClick={join} disabled={busy || (choice === '__new' && !newName.trim())}>{busy ? 'Joining…' : 'Join trip'}</button>
+        <button className="btn primary block" style={{ marginTop: 16 }} onClick={join} disabled={busy || (choice === '__new' && !newName.trim())}>{busy ? 'Joining…' : 'Join group'}</button>
       </div>
     </div>
   )

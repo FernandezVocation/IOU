@@ -79,7 +79,7 @@ export default function PaymentSheet({ payment, from, to, onClose }: { payment?:
 
   return (
     <Sheet title={payment ? 'Payment' : 'Record a payment'} onClose={onClose}>
-      {readOnly && <div className="notice">{payment!.status === 'pending' ? 'Only the person who entered this, the people in it, or the trip owner can change it.' : 'This payment is confirmed. Only the person who received it, or the trip owner, can change it.'}</div>}
+      {readOnly && <div className="notice">{payment!.status === 'pending' ? 'Only the person who entered this, the people in it, or the group owner can change it.' : 'This payment is confirmed. Only the person who received it, or the group owner, can change it.'}</div>}
       <div className="row2">
         <div><label className="lbl" style={{ marginTop: 0 }} htmlFor="pf">Paid by</label>
           <select id="pf" value={fromId} onChange={e => setFromId(e.target.value)} disabled={readOnly}>{t0.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></div>
@@ -112,7 +112,7 @@ export default function PaymentSheet({ payment, from, to, onClose }: { payment?:
       {!payment && (
         <div className="notice" style={{ background: 'var(--soft)', color: 'var(--ink)' }}>
           {confirmsNow ? 'You’re the person receiving this, so it will be marked Received right away.'
-            : `It will show as Sent until ${name(toId)} confirms they received it${toHasAccount ? '' : ` (they have no account, so another member of the trip can confirm for them)`}. Sent payments aren’t counted in balances until they’re received.`}
+            : `It will show as Sent until ${name(toId)} confirms they received it${toHasAccount ? '' : ` (they have no account, so another member of the group can confirm for them)`}. Sent payments aren’t counted in balances until they’re received.`}
         </div>
       )}
       {payment && (

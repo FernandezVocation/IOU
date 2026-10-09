@@ -2,6 +2,7 @@ import type { Expense, GroupData } from './types'
 import { computeLedger, planTransfers } from './ledger'
 import { fmtPlain, toMinor } from './money'
 import { l1, slug } from './format'
+import { catLabel } from './categories'
 
 export type InvoiceMode = 'pending' | 'final'
 
@@ -88,7 +89,7 @@ export function buildInvoiceModel(args: { data: GroupData; billTo: string[]; mod
     if (!share && !paid) continue
     const line: InvoiceLine = {
       expenseId: e.id, date: e.spent_on, time: e.spent_at, vendor: e.vendor || 'Expense',
-      detail: [e.category, e.location].filter(Boolean).join(' · '),
+      detail: [e.category ? catLabel(e) : '', e.location].filter(Boolean).join(' · '),
       payerName: nm(e.payer_id),
       original: e.currency !== cur ? `${fmtPlain(toMinor(e.amount, e.currency), e.currency)} ${e.currency}` : null,
       estimated: c.status === 'estimated', total: c.minor, share, paid, basis: basisFor(e, party),
@@ -285,7 +286,7 @@ export async function buildInvoicePdf(m: InvoiceModel, images: InvoiceImage[] = 
   const pages = doc.getNumberOfPages()
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i); doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...MUTED)
-    doc.text(l1(`${m.reference}  |  ${m.groupName}  |  Generated with Trip Ledger`), mg, 290)
+    doc.text(l1(`${m.reference}  |  ${m.groupName}  |  Generated with IOU`), mg, 290)
     doc.text(`Page ${i} of ${pages}`, right, 290, { align: 'right' })
   }
   return doc.output('blob')

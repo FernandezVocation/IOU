@@ -2,6 +2,7 @@ import type { GroupData } from './types'
 import { currencyDigits } from './money'
 import { receiptFileName, safeName, uniqueName } from './receiptNames'
 import { slug } from './format'
+import { catLabel } from './categories'
 
 const csvCell = (v: unknown): string => {
   const s = String(v ?? '')
@@ -37,7 +38,7 @@ export async function buildReceiptsZip(
       try {
         folder.file(j.file, await fetchBlob(j.r.path))
         ok++
-        rows.push([j.file, j.e.spent_on, (j.e.spent_at ?? '').slice(0, 5), j.e.vendor, j.e.category, j.e.location, j.e.amount.toFixed(currencyDigits(j.e.currency)), j.e.currency, j.e.settled_amount == null ? '' : String(j.e.settled_amount), name(j.e.payer_id), j.e.notes])
+        rows.push([j.file, j.e.spent_on, (j.e.spent_at ?? '').slice(0, 5), j.e.vendor, j.e.category ? catLabel(j.e) : '', j.e.location, j.e.amount.toFixed(currencyDigits(j.e.currency)), j.e.currency, j.e.settled_amount == null ? '' : String(j.e.settled_amount), name(j.e.payer_id), j.e.notes])
       } catch { failed.push(j.file) }
       onProgress?.(++done, jobs.length)
     }

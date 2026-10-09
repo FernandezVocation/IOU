@@ -29,12 +29,12 @@ export function GroupProvider() {
   const { id = '' } = useParams()
   const { user } = useAuth()
   const { data, error, loading, reload } = useGroupData(id, user?.id ?? '')
-  if (loading && !data) return <Spinner label="Loading trip…" />
+  if (loading && !data) return <Spinner label="Loading group…" />
   if (!data) {
     return (
       <div className="app">
-        <div className="notice err" role="alert">{error ?? 'Could not load this trip.'}</div>
-        <Link className="btn block" to="/">Back to your trips</Link>
+        <div className="notice err" role="alert">{error ?? 'Could not load this group.'}</div>
+        <Link className="btn block" to="/">Back to your groups</Link>
       </div>
     )
   }
@@ -45,8 +45,9 @@ const icon = {
   list: <svg className="i" viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" /></svg>,
   scale: <svg className="i" viewBox="0 0 24 24"><path d="M12 3v18M5 7h14M5 7l-3 7a3 3 0 0 0 6 0L5 7zM19 7l-3 7a3 3 0 0 0 6 0l-3-7z" /></svg>,
   receipt: <svg className="i" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6" /></svg>,
-  trip: <svg className="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6.5 6.5 0 0 1 3.5 5.5" /></svg>,
-  plus: <svg className="i" viewBox="0 0 24 24" style={{ stroke: '#fff', width: 26, height: 26 }}><path d="M12 5v14M5 12h14" /></svg>,
+  pie: <svg className="i" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9h-9z" /><path d="M15 3.5A9 9 0 0 1 20.5 9H15z" /></svg>,
+  more: <svg className="i" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /></svg>,
+  plus: <svg className="i" viewBox="0 0 24 24" style={{ stroke: 'currentColor', width: 26, height: 26 }}><path d="M12 5v14M5 12h14" /></svg>,
 }
 
 export function TabsShell() {
@@ -58,20 +59,21 @@ export function TabsShell() {
       <div className="app">
         <div className="top">
           <div>
-            <Link className="backlink" to="/">← Your trips</Link> <Link className="backlink" to="/overview" style={{ marginLeft: 12 }}>Overview</Link>
+            <Link className="backlink" to="/">← Your groups</Link> <Link className="backlink" to="/overview" style={{ marginLeft: 12 }}>Overview</Link>
             <h1>{data.group.name}</h1>
-            <div className="sub">Balances in {data.group.currency} · {data.travelers.length} traveler{data.travelers.length === 1 ? '' : 's'}</div>
+            <div className="sub">Balances in {data.group.currency} · {data.travelers.length} {data.travelers.length === 1 ? 'person' : 'people'}</div>
           </div>
         </div>
         <Outlet />
       </div>
+      <Link className={'fab' + (hasPeople ? '' : ' off')} to={base + '/expense/new'} aria-label="Add expense">{icon.plus}</Link>
       <nav className="tabs" aria-label="Sections">
         <div className="in">
           <NavLink to={base} end>{icon.list}<span>Expenses</span></NavLink>
-          <NavLink to={base + '/receipts'}>{icon.receipt}<span>Receipts</span></NavLink>
-          <Link className={'add' + (hasPeople ? '' : ' off')} to={base + '/expense/new'} aria-label="Add expense"><span className="c">{icon.plus}</span></Link>
+          <NavLink to={base + '/breakdown'}>{icon.pie}<span>Breakdown</span></NavLink>
           <NavLink to={base + '/balances'}>{icon.scale}<span>Balances</span></NavLink>
-          <NavLink to={base + '/trip'}>{icon.trip}<span>Trip</span></NavLink>
+          <NavLink to={base + '/receipts'}>{icon.receipt}<span>Receipts</span></NavLink>
+          <NavLink to={base + '/more'}>{icon.more}<span>More</span></NavLink>
         </div>
       </nav>
     </>

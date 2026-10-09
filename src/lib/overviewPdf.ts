@@ -84,7 +84,7 @@ export async function buildOverviewPdf(inp: OverviewPdfInput): Promise<Blob> {
   const pages = doc.getNumberOfPages()
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i); doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...MUTED)
-    doc.text(l1(`Balance overview  |  ${ymd}  |  Generated with Trip Ledger`), mg, 290); doc.text(`Page ${i} of ${pages}`, right, 290, { align: 'right' })
+    doc.text(l1(`Balance overview  |  ${ymd}  |  Generated with IOU`), mg, 290); doc.text(`Page ${i} of ${pages}`, right, 290, { align: 'right' })
   }
   return doc.output('blob')
 }

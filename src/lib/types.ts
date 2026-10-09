@@ -7,6 +7,8 @@ export interface Group {
   invite_code: string
   created_by: string | null
   created_at: string
+  /** What the group is for: Trip, Household, Event, or anything typed. Missing on old data. */
+  kind?: string
 }
 export interface Member {
   user_id: string
@@ -40,6 +42,8 @@ export interface Expense {
   vendor: string
   location: string
   category: string
+  /** Optional second level under the category ("Food" › "Dinner"). */
+  subcategory?: string
   notes: string
   amount: number
   currency: string

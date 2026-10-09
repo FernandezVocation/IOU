@@ -5,7 +5,7 @@ import type { AllGroups } from '../lib/allGroups'
 import { friendly } from '../lib/format'
 import { Sheet, useToast } from './ui'
 
-/** Tell the app which travelers across your trips are the same person. Private to you. */
+/** Tell the app which travelers across your groups are the same person. Private to you. */
 export default function PeopleSheet({ all, userId, onClose, onChanged }: { all: AllGroups; userId: string; onClose: () => void; onChanged: () => void }) {
   const toast = useToast()
   const [sel, setSel] = useState<string[]>([])
@@ -45,8 +45,8 @@ export default function PeopleSheet({ all, userId, onClose, onChanged }: { all: 
   }, 'Separated into individual people.')
 
   return (
-    <Sheet title="People across your trips" onClose={onClose}>
-      <div className="muted small">Same name in two trips is combined automatically. If a person goes by different names, pick them and tap Merge. If two different people share a name, tap Separate. This is only for your own overview; nobody else sees it.</div>
+    <Sheet title="People across your groups" onClose={onClose}>
+      <div className="muted small">Same name in two groups is combined automatically. If a person goes by different names, pick them and tap Merge. If two different people share a name, tap Separate. This is only for your own overview; nobody else sees it.</div>
       <div className="panel">
         {people.map(p => (
           <div key={p.key} style={{ padding: '10px 0', borderTop: '1px solid var(--line)' }}>
