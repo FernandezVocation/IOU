@@ -107,3 +107,26 @@ describe('sorting who pays whom', () => {
     expect(screen.getByText(/You are owed CAD 200\.00/)).toBeTruthy()
   })
 })
+
+describe('spotlight on the signed-in person', () => {
+  it('highlights only their own pair lines and their row in Who is ahead', () => {
+    const { container } = mount(data([], 'sam', false))
+    const lit = [...container.querySelectorAll('details.pair.me')].map(e => e.querySelector('summary')!.textContent)
+    expect(lit.length).toBe(1)
+    expect(lit[0]).toContain('You owe Alex')
+    expect(container.querySelectorAll('details.pair').length).toBe(2)   // Jordan owes Alex is not lit
+    expect(container.querySelectorAll('.dv.me').length).toBe(1)
+    expect(container.querySelector('.dv.me')!.textContent).toContain('You')
+  })
+  it('highlights nothing for a person who is in no transaction', () => {
+    const d = data([], 'sam', false)
+    d.travelers.push(trav('zed', 'Zed', 'u7')); d.me = trav('zed', 'Zed', 'u7')
+    const { container } = mount(d)
+    expect(container.querySelectorAll('.me').length).toBe(0)
+  })
+  it('highlights the person heading when sorted by who is owed', () => {
+    const { container } = mount(data([], 'alex', true))
+    fireEvent.click(screen.getByText('By person owed'))
+    expect(container.querySelectorAll('.day.me').length).toBe(1)
+  })
+})

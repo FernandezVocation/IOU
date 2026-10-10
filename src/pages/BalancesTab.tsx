@@ -53,7 +53,7 @@ export default function BalancesTab() {
       return { id, total, list }
     }).sort((a, b) => b.total - a.total || who(data, a.id).localeCompare(who(data, b.id))).map(({ id, total, list }) => {
       const you = verbOwe(data, id) === 'owe'
-      return { key: id, items: list, head: <div className="day"><span>{who(data, id)} {sortBy === 'owed' ? (you ? 'are owed' : 'is owed') : verbOwe(data, id)} {fmtMoney(total, cur)}</span><span>{list.length} {list.length === 1 ? 'payment' : 'payments'}</span></div> }
+      return { key: id, items: list, head: <div className={'day' + (data.me?.id === id && R.rows[id]?.length ? ' me' : '')}><span>{who(data, id)} {sortBy === 'owed' ? (you ? 'are owed' : 'is owed') : verbOwe(data, id)} {fmtMoney(total, cur)}</span><span>{list.length} {list.length === 1 ? 'payment' : 'payments'}</span></div> }
     })
   }
   const [pairMode, setPairMode] = useState<'itemized' | 'fewest'>('itemized')
@@ -69,6 +69,9 @@ export default function BalancesTab() {
   if (!data.travelers.length) return <div className="empty"><b>No travelers yet</b>Add people in the Trip tab first.</div>
 
   const max = Math.max(1, ...data.travelers.map(t => Math.abs(R.balance[t.id])))
+  // Spotlight: the signed-in person's own lines, but only if they actually appear in a transaction.
+  const spot = data.me && (R.rows[data.me.id]?.length ?? 0) > 0 ? data.me.id : null
+  const mine = (a: string, b: string) => !!spot && (a === spot || b === spot)
   const unsettled = R.counts.estimated + R.counts.missing
   const pendingTotal = R.pendingPayments.reduce((s, x) => s + x.amount, 0)
   const toggle = (k: string) => setOpen(prev => { const n = new Set(prev); if (n.has(k)) n.delete(k); else n.add(k); return n })
@@ -115,7 +118,7 @@ export default function BalancesTab() {
         {data.travelers.map(t => {
           const b = R.balance[t.id], w = Math.round((Math.abs(b) / max) * 50)
           return (
-            <button className="dv" key={t.id} onClick={() => setStatementId(t.id)}>
+            <button className={'dv' + (t.id === spot ? ' me' : '')} key={t.id} onClick={() => setStatementId(t.id)}>
               <span className="nm">{who(data, t.id)}</span>
               <span className="tr"><i className={'bar ' + (b >= 0 ? 'pos' : 'neg')} style={{ width: b === 0 ? 0 : Math.max(w, 2) + '%' }} /></span>
               <span className={'am ' + (b > 0 ? 'pos-t' : b < 0 ? 'neg-t' : '')}>{b > 0 ? '+' : b < 0 ? '−' : ''}{fmtPlain(Math.abs(b), cur)}</span>
@@ -144,7 +147,7 @@ export default function BalancesTab() {
             {arrange(R.pairs, p => p.debtor, p => p.creditor, p => p.net).map(g => <Fragment key={g.key}>{g.head}{g.items.map(p => {
               const k = 'p:' + p.debtor + '>' + p.creditor
               return (
-                <details className="pair" key={k} open={open.has(k)} onToggle={e => { if ((e.currentTarget as HTMLDetailsElement).open !== open.has(k)) toggle(k) }}>
+                <details className={'pair' + (mine(p.debtor, p.creditor) ? ' me' : '')} key={k} open={open.has(k)} onToggle={e => { if ((e.currentTarget as HTMLDetailsElement).open !== open.has(k)) toggle(k) }}>
                   <summary><span>{who(data, p.debtor)} {verbOwe(data, p.debtor)} {who(data, p.creditor)} <Tag s={p.status} /></span><span>{fmtMoney(p.net, cur)}</span></summary>
                   <div className="why">
                     <Lines p={p} />
@@ -160,7 +163,7 @@ export default function BalancesTab() {
                 {R.settledPairs.map(p => {
                   const k = 's:' + p.debtor + '>' + p.creditor
                   return (
-                    <details className="pair" key={k} open={open.has(k)} onToggle={e => { if ((e.currentTarget as HTMLDetailsElement).open !== open.has(k)) toggle(k) }}>
+                    <details className={'pair' + (mine(p.debtor, p.creditor) ? ' me' : '')} key={k} open={open.has(k)} onToggle={e => { if ((e.currentTarget as HTMLDetailsElement).open !== open.has(k)) toggle(k) }}>
                       <summary><span>{who(data, p.debtor)} &amp; {who(data, p.creditor)} <Tag s="paid" /></span><span>{fmtMoney(0, cur)}</span></summary>
                       <div className="why"><Lines p={p} /></div>
                     </details>
@@ -175,7 +178,7 @@ export default function BalancesTab() {
             {arrange(R.transfers, t => t.from, t => t.to, t => t.amount).map(g => <Fragment key={g.key}>{g.head}{g.items.map(t => {
               const k = 'f:' + t.from + '>' + t.to
               return (
-                <details className="pair" key={k} open={open.has(k)} onToggle={e => { if ((e.currentTarget as HTMLDetailsElement).open !== open.has(k)) toggle(k) }}>
+                <details className={'pair' + (mine(t.from, t.to) ? ' me' : '')} key={k} open={open.has(k)} onToggle={e => { if ((e.currentTarget as HTMLDetailsElement).open !== open.has(k)) toggle(k) }}>
                   <summary><span>{who(data, t.from)} {verbOwe(data, t.from)} {who(data, t.to)}</span><span>{fmtMoney(t.amount, cur)}</span></summary>
                   <div className="why">
                     <div className="small muted" style={{ margin: '0 0 6px' }}>{who(data, t.from, false)}</div>

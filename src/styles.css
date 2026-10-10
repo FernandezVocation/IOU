@@ -186,3 +186,10 @@ button.nhead{cursor:pointer}
 .fab.off{pointer-events:none;opacity:.5}
 span.lbl{display:block;font-size:13px;font-weight:600;color:var(--muted);margin:14px 0 6px}
 .seg.fit button{flex:1 1 auto;white-space:nowrap;padding:0 8px;font-size:13px}
+
+/* Spotlight on the signed-in person's own lines in Balances */
+details.pair.me{border-color:var(--accent);border-left-width:5px;background:color-mix(in srgb,var(--accent) 10%,var(--surface))}
+details.pair.me summary{font-weight:700}
+.dv.me{background:color-mix(in srgb,var(--accent) 12%,transparent);border-radius:10px;padding:7px 8px;box-shadow:inset 4px 0 0 var(--accent)}
+.dv.me .nm,.dv.me .am{font-weight:800}
+.day.me{background:color-mix(in srgb,var(--accent) 14%,transparent);border-radius:8px;box-shadow:inset 4px 0 0 var(--accent)}
