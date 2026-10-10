@@ -17,8 +17,8 @@ describe('palette', () => {
 })
 
 describe('icons', () => {
-  it('offers at least 50, each with a unique simple id and a drawing', () => {
-    expect(ICONS.length).toBeGreaterThanOrEqual(50)
+  it('offers at least 100, each with a unique simple id and a drawing', () => {
+    expect(ICONS.length).toBeGreaterThanOrEqual(100)
     expect(new Set(ICONS.map(i => i.id)).size).toBe(ICONS.length)
     for (const i of ICONS) { expect(i.id).toMatch(/^[a-z0-9-]{1,24}$/); expect(i.svg.length).toBeGreaterThan(10) }
   })

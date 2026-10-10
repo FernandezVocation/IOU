@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { currencyOption } from '../components/currencyOption'
 import GroupLookPicker from '../components/GroupLookPicker'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -44,7 +45,7 @@ export default function NewGroupPage() {
         <GroupLookPicker kind={kind} icon={look?.icon} color={look?.color} onChange={setLook} />
         <label className="lbl" htmlFor="c">Settle currency</label>
         <select id="c" value={pick} onChange={e => setPick(e.target.value)}>
-          {COMMON_CURRENCIES.map(c => <option key={c}>{c}</option>)}
+          {COMMON_CURRENCIES.map(c => currencyOption(c))}
           <option value="__other">Other…</option>
         </select>
         {pick === '__other' && <input type="text" value={other} onChange={e => setOther(e.target.value)} maxLength={3} placeholder="e.g. PLN" style={{ marginTop: 8, textTransform: 'uppercase' }} aria-label="Currency code" />}

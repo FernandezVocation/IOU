@@ -13,9 +13,9 @@ describe('icon and colour picker', () => {
     expect(screen.getByLabelText('Home').getAttribute('aria-checked')).toBe('true')
     expect(screen.getByText(/Default for this type/)).toBeTruthy()
   })
-  it('offers every icon and 30 colours', () => {
+  it('offers every icon (100 or more) and 30 colours', () => {
     render(<GroupLookPicker kind="Trip" onChange={() => {}} />)
-    expect(screen.getAllByRole('radio').length).toBeGreaterThanOrEqual(80)
+    expect(screen.getAllByRole('radio').length).toBeGreaterThanOrEqual(130)
     expect(screen.getAllByLabelText(/^Colour \d+$/).length).toBe(30)
   })
   it('picking an icon keeps the current colour, and picking a colour keeps the icon', () => {

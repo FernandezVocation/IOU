@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { currencyOption } from '../components/currencyOption'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { COMMON_CURRENCIES, friendly, nowTime, todayStr } from '../lib/format'
@@ -257,7 +258,7 @@ export default function ExpenseEditor() {
               <>
                 <label className="lbl" style={{ marginTop: 0 }} htmlFor="cur">Currency</label>
                 <select id="cur" value={spending && !f.foreign ? base : f.pick} onChange={e => onCurChange(e.target.value)}>
-                  {currencyChoices.map(c => <option key={c}>{c}</option>)}
+                  {currencyChoices.map(c => currencyOption(c))}
                   {spending && !currencyChoices.includes(base) && <option>{base}</option>}
                   <option value="__other">Other…</option>
                 </select>
@@ -284,7 +285,7 @@ export default function ExpenseEditor() {
               <>
                 <label className="lbl" htmlFor="stmtcur">{payerT ? (payerT.id === data.me?.id ? 'Your' : payerT.name + '’s') : 'Their'} card statement is in</label>
                 <select id="stmtcur" value={stmtCur} onChange={e => setStmtCur(e.target.value)}>
-                  {stmtChoices.map(c => <option key={c}>{c}</option>)}
+                  {stmtChoices.map(c => currencyOption(c))}
                 </select>
               </>
             )}

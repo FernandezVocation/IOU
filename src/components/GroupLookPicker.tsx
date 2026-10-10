@@ -10,7 +10,7 @@ interface Props {
   disabled?: boolean
 }
 
-/** 59 icons and 30 colours. Picking either saves both, so the group always has an explicit look afterwards. */
+/** 100+ icons and 30 colours. Picking either saves both, so the group always has an explicit look afterwards. */
 export default function GroupLookPicker({ kind, icon, color, onChange, disabled }: Props) {
   const look: Look = groupLook({ kind, icon, color })
   return (
