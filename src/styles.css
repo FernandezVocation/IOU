@@ -150,6 +150,9 @@ svg.i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;stro
 .pcard .hist{margin-top:6px}
 
 nav.tabs .in.two{grid-template-columns:repeat(2,1fr)}
+nav.tabs .in.three{grid-template-columns:repeat(3,1fr)}
+nav.tabs .in.six{grid-template-columns:repeat(6,1fr)}
+nav.tabs .in.six a{font-size:11px}
 .rbox{margin-top:2px}
 .rbox input{width:22px;height:22px}
 
@@ -213,3 +216,52 @@ details.pair.me summary{font-weight:700}
 .themebar span{margin-right:4px}
 .themebar button{border:0;background:transparent;color:var(--muted);font-size:12px;padding:4px 8px;min-height:28px;border-radius:999px}
 .themebar button[aria-pressed=true]{background:var(--soft);color:var(--ink);font-weight:600}
+
+/* Vaults */
+.lnkchip{display:block;width:fit-content;margin-top:4px;font-size:12px;font-weight:600;color:var(--accent);background:var(--soft);border-radius:999px;padding:1px 9px}
+.tyicon{display:inline-flex;align-items:center;justify-content:center;flex:none}
+.vtools{display:flex;gap:6px;align-items:center}
+.vsec{margin-top:6px}
+.vday{font:700 15px var(--display);margin:16px 2px 8px;display:flex;gap:8px;align-items:baseline}
+.vday span{font:500 12px var(--body);color:var(--muted)}
+.vrow{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:14px;margin-bottom:8px;box-shadow:var(--shadow);padding-right:8px;color:var(--ink)}
+.vmain{flex:1;min-width:0;display:flex;align-items:center;gap:10px;padding:10px 0 10px 10px;text-decoration:none;color:var(--ink)}
+.vbtn{width:100%;text-align:left;padding:10px;gap:10px;font:inherit;cursor:pointer}
+.vtime{width:52px;flex:none;text-align:center;font-weight:700;font-size:14px;line-height:1.1}
+.vtime small{display:block;font-size:10px;font-weight:600;color:var(--muted);margin-top:3px;text-transform:uppercase}
+.vtx{flex:1;min-width:0;display:flex;flex-direction:column}
+.vtx b{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vtx span{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pv{font-style:normal;font-size:11px;font-weight:600;color:var(--muted);background:var(--soft);border-radius:999px;padding:1px 7px;margin-left:6px}
+.vgo{width:44px;height:44px;flex:none;display:grid;place-items:center;border-radius:12px;color:var(--accent);text-decoration:none}
+.vgo .i{stroke:currentColor}
+.vlinks{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px;margin-top:10px}
+.vlinks .btn{text-align:center;text-decoration:none}
+.vfacts{margin-top:12px}
+.vfacts>div{display:flex;justify-content:space-between;gap:12px;padding:8px 0;font-size:14px}
+.vfacts>div+div{border-top:1px solid var(--line)}
+.vfacts span{color:var(--muted);flex:none}
+.vfacts b{text-align:right;font-weight:600;overflow-wrap:anywhere}
+.vfacts small{font-weight:400;color:var(--muted)}
+.vfiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.vfile{display:flex;flex-direction:column;gap:4px}
+.vfile img{width:100%;border-radius:12px;border:1px solid var(--line);background:#fff}
+.vtypes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.vtypes button{min-height:58px;border:1px solid var(--line);background:var(--surface);border-radius:12px;font-size:11px;font-weight:600;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+.vtypes button[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}
+.vfedit{display:flex;align-items:center;gap:8px;margin-top:8px}
+.vfedit img{width:44px;height:44px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.vfedit input{flex:1;min-width:0}
+.vfname{max-width:34%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.linkbtn{border:0;background:transparent;color:var(--accent);font-weight:600;padding:10px 0;min-height:44px}
+.qrview{position:fixed;inset:0;z-index:80;background:#fff;color:#111;display:flex;flex-direction:column;align-items:center;overflow:auto;padding:env(safe-area-inset-top,0px) 16px env(safe-area-inset-bottom,0px)}
+.qrview .qrtop{align-self:stretch;display:flex;justify-content:space-between;align-items:center;padding-top:8px}
+.qrview .ib{width:44px;height:44px;border:0;background:transparent;display:grid;place-items:center;border-radius:12px}
+.qrview .ib .i{stroke:#111}
+.qrview h1{margin:12px 8px 2px;font:700 22px/1.15 var(--display);text-align:center;color:#111}
+.qrview p{margin:0;color:#4a5550;font-size:14px;text-align:center}
+.qrview .qrimg{width:min(92vw,520px);max-height:62vh;object-fit:contain;margin-top:18px;background:#fff}
+.qrview .qrsw{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:14px}
+.qrview .qrsw button{min-height:44px;padding:0 16px;border-radius:12px;border:1px solid #cfd6d1;background:#fff;color:#111;font-weight:600}
+.qrview .qrsw button[aria-pressed=true]{background:#111;color:#fff;border-color:#111}
+.qrview .qrnote{margin-top:16px;font-size:12px}

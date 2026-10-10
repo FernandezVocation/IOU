@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { currencyOption } from '../components/currencyOption'
 import { CurrencySelect } from '../components/CurrencySelect'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { COMMON_CURRENCIES, friendly, nowTime, todayStr } from '../lib/format'
 import { allocate, currencyDigits, fmtMoney, fromMinor, isValidCurrency, parseNum, toMinor } from '../lib/money'
@@ -45,6 +45,7 @@ async function prepFile(file: File): Promise<NewFile> {
 
 export default function ExpenseEditor() {
   const { eid = '' } = useParams()
+  const [qs] = useSearchParams()   // a vault item can open a new expense with these filled in
   const { data, reload } = useGroup()
   const nav = useNavigate()
   const toast = useToast()
@@ -74,8 +75,8 @@ export default function ExpenseEditor() {
     const startCur = existing && foreign ? existing.currency : spending ? spending : (lastF && isValidCurrency(lastF) && lastF !== base ? lastF : COMMON_CURRENCIES.find(c => c !== base) ?? 'USD')
     const inList = COMMON_CURRENCIES.includes(startCur)
     setForm({
-      date: existing?.spent_on ?? todayStr(), time: existing ? (existing.spent_at ?? '').slice(0, 5) : nowTime(),
-      vendor: existing?.vendor ?? '', description: existing?.description ?? '', location: existing?.location ?? '', category: existing?.category ?? '', subcategory: existing?.subcategory ?? '', notes: existing?.notes ?? '',
+      date: existing?.spent_on ?? (/^\d{4}-\d{2}-\d{2}$/.test(qs.get('date') ?? '') ? qs.get('date')! : todayStr()), time: existing ? (existing.spent_at ?? '').slice(0, 5) : (/^\d{2}:\d{2}$/.test(qs.get('time') ?? '') ? qs.get('time')! : nowTime()),
+      vendor: existing?.vendor ?? (qs.get('vendor') ?? '').slice(0, 120), description: existing?.description ?? (qs.get('description') ?? '').slice(0, 200), location: existing?.location ?? '', category: existing?.category ?? '', subcategory: existing?.subcategory ?? '', notes: existing?.notes ?? '',
       amount: existing ? String(existing.amount) : '', foreign, pick: inList ? startCur : '__other', otherCur: inList ? '' : startCur,
       settled: existing?.settled_amount != null ? String(existing.settled_amount) : '',
       charged: existing?.charged_amount != null ? String(existing.charged_amount) : '',

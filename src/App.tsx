@@ -17,6 +17,14 @@ import OverviewPage from './pages/OverviewPage'
 import ExpenseEditor from './pages/ExpenseEditor'
 import BreakdownTab from './pages/BreakdownTab'
 import MoreTab from './pages/MoreTab'
+import VaultsPage from './pages/VaultsPage'
+import NewVaultPage from './pages/NewVaultPage'
+import VaultJoinPage from './pages/VaultJoinPage'
+import { VaultProvider } from './pages/VaultShell'
+import VaultHome from './pages/VaultHome'
+import VaultItemPage from './pages/VaultItemPage'
+import VaultItemEditor from './pages/VaultItemEditor'
+import SharedVaultPage from './pages/SharedVaultPage'
 
 /** Old links to the Trip tab now land on group settings. */
 function ToSettings() { const { id = '' } = useParams(); return <Navigate to={`/g/${id}/settings`} replace /> }
@@ -47,10 +55,20 @@ export default function App() {
       <Routes>
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/b/:token" element={<SharedPage />} />
+        <Route path="/v/:token" element={<SharedVaultPage />} />
         <Route element={<RequireAuth />}>
           <Route path="/" element={<GroupsPage />} />
           <Route path="/overview" element={<OverviewPage />} />
           <Route path="/new" element={<NewGroupPage />} />
+          <Route path="/vaults" element={<VaultsPage />} />
+          <Route path="/vaults/new" element={<NewVaultPage />} />
+          <Route path="/vj/:code" element={<VaultJoinPage />} />
+          <Route path="/vault/:id" element={<VaultProvider />}>
+            <Route index element={<VaultHome />} />
+            <Route path="item/new" element={<VaultItemEditor />} />
+            <Route path="item/:iid" element={<VaultItemPage />} />
+            <Route path="item/:iid/edit" element={<VaultItemEditor />} />
+          </Route>
           <Route path="/join/:code" element={<JoinPage />} />
           <Route path="/g/:id" element={<GroupProvider />}>
             <Route element={<TabsShell />}>

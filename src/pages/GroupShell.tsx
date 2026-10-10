@@ -1,4 +1,5 @@
-import { createContext, useContext } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
+import { linkedVaultFor } from '../lib/useVault'
 import GroupIcon from '../components/GroupIcon'
 import { Link, NavLink, Outlet, useParams } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
@@ -48,6 +49,7 @@ const icon = {
   scale: <svg className="i" viewBox="0 0 24 24"><path d="M12 3v18M5 7h14M5 7l-3 7a3 3 0 0 0 6 0L5 7zM19 7l-3 7a3 3 0 0 0 6 0l-3-7z" /></svg>,
   receipt: <svg className="i" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6" /></svg>,
   pie: <svg className="i" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9h-9z" /><path d="M15 3.5A9 9 0 0 1 20.5 9H15z" /></svg>,
+  vault: <svg className="i" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="15" rx="3" /><path d="M3 10h18M9 14h6" /></svg>,
   more: <svg className="i" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /></svg>,
   plus: <svg className="i" viewBox="0 0 24 24" style={{ stroke: 'currentColor', width: 26, height: 26 }}><path d="M12 5v14M5 12h14" /></svg>,
 }
@@ -57,6 +59,9 @@ export function TabsShell() {
   const base = '/g/' + data.group.id
   const hasPeople = data.travelers.length > 0
   const canEdit = canEditGroup(data)
+  // A vault linked to this group, if the signed-in person is in that vault.
+  const [vaultId, setVaultId] = useState<string | null>(null)
+  useEffect(() => { let alive = true; linkedVaultFor(data.group.id).then(v => { if (alive) setVaultId(v?.id ?? null) }).catch(() => { /* no vault tab */ }); return () => { alive = false } }, [data.group.id])
   return (
     <>
       <div className="app">
@@ -77,11 +82,12 @@ export function TabsShell() {
       </div>
       {canEdit && <Link className={'fab' + (hasPeople ? '' : ' off')} to={base + '/expense/new'} aria-label="Add expense">{icon.plus}</Link>}
       <nav className="tabs" aria-label="Sections">
-        <div className="in">
+        <div className={'in' + (vaultId ? ' six' : '')}>
           <NavLink to={base} end>{icon.list}<span>Expenses</span></NavLink>
           <NavLink to={base + '/breakdown'}>{icon.pie}<span>Breakdown</span></NavLink>
           <NavLink to={base + '/balances'}>{icon.scale}<span>Balances</span></NavLink>
           <NavLink to={base + '/receipts'}>{icon.receipt}<span>Receipts</span></NavLink>
+          {vaultId && <NavLink to={'/vault/' + vaultId}>{icon.vault}<span>Vault</span></NavLink>}
           <NavLink to={base + '/more'}>{icon.more}<span>More</span></NavLink>
         </div>
       </nav>
