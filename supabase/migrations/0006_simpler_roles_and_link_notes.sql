@@ -24,7 +24,7 @@ create or replace function public.is_owner(gid uuid) returns boolean
 language sql stable security definer set search_path = public as $$
   select exists (select 1 from public.group_members where group_id = gid and user_id = auth.uid() and role in ('owner', 'admin'))
 $$;
-create function public.is_primary_owner(gid uuid) returns boolean
+create or replace function public.is_primary_owner(gid uuid) returns boolean
 language sql stable security definer set search_path = public as $$
   select exists (select 1 from public.group_members where group_id = gid and user_id = auth.uid() and role = 'owner')
 $$;

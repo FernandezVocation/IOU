@@ -20,14 +20,14 @@ update public.group_members set role = 'editor' where role = 'member';
 alter table public.group_members add constraint group_members_role_check check (role in ('owner', 'editor', 'viewer'));
 alter table public.group_members alter column role set default 'viewer';
 
-create function public.can_edit(gid uuid) returns boolean
+create or replace function public.can_edit(gid uuid) returns boolean
 language sql stable security definer set search_path = public as $$
   select exists (select 1 from public.group_members
                  where group_id = gid and user_id = auth.uid() and role in ('owner', 'editor'))
 $$;
 
 -- Owner, or an editor who added this expense. Anyone else (including other editors) may only read it.
-create function public.can_modify_expense(eid uuid) returns boolean
+create or replace function public.can_modify_expense(eid uuid) returns boolean
 language sql stable security definer set search_path = public as $$
   select exists (select 1 from public.expenses e
                  where e.id = eid
@@ -35,7 +35,7 @@ language sql stable security definer set search_path = public as $$
 $$;
 
 -- Receipt files live under <group id>/...; uploading and deleting needs edit rights in that group.
-create function public.can_edit_receipt(object_name text) returns boolean
+create or replace function public.can_edit_receipt(object_name text) returns boolean
 language plpgsql stable security definer set search_path = public as $$
 begin
   return public.can_edit(((string_to_array(object_name, '/'))[1])::uuid);
@@ -50,29 +50,49 @@ drop policy if exists splits_all on public.expense_splits;
 drop policy if exists receipts_all on public.receipts;
 drop policy if exists rates_all on public.group_rates;
 
+drop policy if exists travelers_read on public.travelers;
 create policy travelers_read   on public.travelers for select to authenticated using (public.is_member(group_id));
+drop policy if exists travelers_insert on public.travelers;
 create policy travelers_insert on public.travelers for insert to authenticated with check (public.can_edit(group_id));
+drop policy if exists travelers_update on public.travelers;
 create policy travelers_update on public.travelers for update to authenticated using (public.can_edit(group_id)) with check (public.can_edit(group_id));
+drop policy if exists travelers_delete on public.travelers;
 create policy travelers_delete on public.travelers for delete to authenticated using (public.can_edit(group_id));
 
+drop policy if exists expenses_read on public.expenses;
 create policy expenses_read   on public.expenses for select to authenticated using (public.is_member(group_id));
+drop policy if exists expenses_insert on public.expenses;
 create policy expenses_insert on public.expenses for insert to authenticated with check (public.can_edit(group_id));
+drop policy if exists expenses_update on public.expenses;
 create policy expenses_update on public.expenses for update to authenticated using (public.can_modify_expense(id)) with check (public.can_edit(group_id));
+drop policy if exists expenses_delete on public.expenses;
 create policy expenses_delete on public.expenses for delete to authenticated using (public.can_modify_expense(id));
 
+drop policy if exists splits_read on public.expense_splits;
 create policy splits_read   on public.expense_splits for select to authenticated using (public.is_member(group_id));
+drop policy if exists splits_insert on public.expense_splits;
 create policy splits_insert on public.expense_splits for insert to authenticated with check (public.can_modify_expense(expense_id));
+drop policy if exists splits_update on public.expense_splits;
 create policy splits_update on public.expense_splits for update to authenticated using (public.can_modify_expense(expense_id)) with check (public.can_modify_expense(expense_id));
+drop policy if exists splits_delete on public.expense_splits;
 create policy splits_delete on public.expense_splits for delete to authenticated using (public.can_modify_expense(expense_id));
 
+drop policy if exists receipts_rows_read on public.receipts;
 create policy receipts_rows_read   on public.receipts for select to authenticated using (public.is_member(group_id));
+drop policy if exists receipts_rows_insert on public.receipts;
 create policy receipts_rows_insert on public.receipts for insert to authenticated with check (public.can_modify_expense(expense_id));
+drop policy if exists receipts_rows_update on public.receipts;
 create policy receipts_rows_update on public.receipts for update to authenticated using (public.can_modify_expense(expense_id)) with check (public.can_modify_expense(expense_id));
+drop policy if exists receipts_rows_delete on public.receipts;
 create policy receipts_rows_delete on public.receipts for delete to authenticated using (public.can_modify_expense(expense_id));
 
+drop policy if exists rates_read on public.group_rates;
 create policy rates_read   on public.group_rates for select to authenticated using (public.is_member(group_id));
+drop policy if exists rates_insert on public.group_rates;
 create policy rates_insert on public.group_rates for insert to authenticated with check (public.can_edit(group_id));
+drop policy if exists rates_update on public.group_rates;
 create policy rates_update on public.group_rates for update to authenticated using (public.can_edit(group_id)) with check (public.can_edit(group_id));
+drop policy if exists rates_delete on public.group_rates;
 create policy rates_delete on public.group_rates for delete to authenticated using (public.can_edit(group_id));
 
 -- save_expense runs with the caller's own rights (security invoker), so the policies above decide who may
@@ -115,7 +135,7 @@ end $$;
 
 -- Payments are written only through functions that already check who may do what. A viewer may not
 -- record or change one at all. (Deletes are left alone so deleting a whole group still works.)
-create function public.payments_need_editor() returns trigger
+create or replace function public.payments_need_editor() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
   if auth.uid() is null then return coalesce(new, old); end if;
@@ -130,6 +150,7 @@ begin
   end if;
   return new;
 end $$;
+drop trigger if exists payments_need_editor on public.payments;
 create trigger payments_need_editor before insert or update or delete on public.payments
   for each row execute function public.payments_need_editor();
 
@@ -165,7 +186,7 @@ begin
   return g.id;
 end $$;
 
-create function public.set_member_role(p_group uuid, p_user uuid, p_role text) returns void
+create or replace function public.set_member_role(p_group uuid, p_user uuid, p_role text) returns void
 language plpgsql security definer set search_path = public as $$
 begin
   if auth.uid() is null then raise exception 'Sign in first.' using errcode = '28000'; end if;
@@ -181,18 +202,20 @@ end $$;
 -- ───────────────────────── receipts (storage) ─────────────────────────
 drop policy if exists receipts_insert on storage.objects;
 drop policy if exists receipts_delete on storage.objects;
+drop policy if exists receipts_insert on storage.objects;
 create policy receipts_insert on storage.objects for insert to authenticated
   with check (bucket_id = 'receipts' and public.can_edit_receipt(name));
+drop policy if exists receipts_delete on storage.objects;
 create policy receipts_delete on storage.objects for delete to authenticated
   using (bucket_id = 'receipts' and public.can_edit_receipt(name));
 
 -- ───────────────────────── read-only links ─────────────────────────
-alter table public.share_links add column scope text not null default 'person' check (scope in ('group', 'person'));
+alter table public.share_links add column if not exists scope text not null default 'person' check (scope in ('group', 'person'));
 
 -- Who has opened a group-wide link. A visitor with no account signs in "anonymously" (no email, nothing to
 -- remember), calls claim_share_link(token), and from then on may read that group's receipt files. Turning
 -- the link off deletes these rows, which ends that access at once.
-create table public.share_link_viewers (
+create table if not exists public.share_link_viewers (
   link_id    uuid not null references public.share_links(id) on delete cascade,
   user_id    uuid not null,
   created_at timestamptz not null default now(),
@@ -205,12 +228,15 @@ revoke all on public.share_link_viewers from anon, authenticated;
 drop policy if exists share_links_read on public.share_links;
 drop policy if exists share_links_delete on public.share_links;
 drop policy if exists share_link_travelers_read on public.share_link_travelers;
+drop policy if exists share_links_read on public.share_links;
 create policy share_links_read on public.share_links for select to authenticated using (public.is_owner(group_id));
+drop policy if exists share_links_delete on public.share_links;
 create policy share_links_delete on public.share_links for delete to authenticated using (public.is_owner(group_id));
+drop policy if exists share_link_travelers_read on public.share_link_travelers;
 create policy share_link_travelers_read on public.share_link_travelers for select to authenticated using (public.is_owner(group_id));
 
-drop function public.create_share_link(uuid, text, uuid[], timestamptz);
-create function public.create_share_link(
+drop function if exists public.create_share_link(uuid, text, uuid[], timestamptz);
+create or replace function public.create_share_link(
   p_group uuid, p_label text, p_traveler_ids uuid[], p_expires_at timestamptz default null, p_scope text default 'person'
 ) returns text
 language plpgsql security definer set search_path = public as $$
@@ -246,7 +272,7 @@ begin
   return tok;
 end $$;
 
-create function public.claim_share_link(p_token text) returns boolean
+create or replace function public.claim_share_link(p_token text) returns boolean
 language plpgsql security definer set search_path = public as $$
 declare l public.share_links;
 begin
@@ -258,7 +284,7 @@ begin
   return true;
 end $$;
 
-create function public.viewer_link_can_read_receipt(object_name text) returns boolean
+create or replace function public.viewer_link_can_read_receipt(object_name text) returns boolean
 language plpgsql stable security definer set search_path = public as $$
 begin
   return exists (
