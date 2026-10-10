@@ -78,14 +78,29 @@ describe('invoice maths', () => {
     expect(f.shareLines.some(l => l.vendor === 'Taxi')).toBe(false)
     expect(f.counts.excluded).toBe(1)
   })
-  it('payment instructions add up to what is due (or what is owed back)', () => {
-    for (const t of travelers) {
-      const m = buildInvoiceModel({ data, billTo: [t.id], mode: 'pending', now: NOW })
-      if (m.totals.due > 0) expect(sum(m.payOut.map(x => x.amount))).toBe(m.totals.due)
-      else expect(sum(m.payIn.map(x => x.amount))).toBe(-m.totals.due)
+  it('payment instructions net to what is due, in both settle modes', () => {
+    for (const settle of ['itemized', 'fewest'] as const) {
+      for (const ids of [...travelers.map(t => [t.id]), ['a', 'b']]) {
+        const m = buildInvoiceModel({ data, billTo: ids, mode: 'pending', now: NOW, settle })
+        expect(sum(m.payOut.map(x => x.amount)) - sum(m.payIn.map(x => x.amount))).toBe(m.totals.due)
+      }
     }
-    const m2 = buildInvoiceModel({ data, billTo: ['a', 'b'], mode: 'pending', now: NOW })
-    if (m2.totals.due > 0) expect(sum(m2.payOut.map(x => x.amount))).toBe(m2.totals.due)
+  })
+  it('itemized: pays each person the amount tied to their expenses, and lists who owes the billed person', () => {
+    const tv = ['shirley', 'steven', 'lavi', 'cy'].map(id => ({ id, name: id[0].toUpperCase() + id.slice(1) })) as unknown as GroupData['travelers']
+    const mk = (id: string, paidBy: string, amount: number, who: string[]) => ({
+      id, group_id: 'g', spent_on: '2026-01-01', spent_at: null, vendor: id, category: '', subcategory: '', location: '', notes: '',
+      amount, currency: 'USD', settled_amount: null, payer_id: paidBy, split_mode: 'equal', receipts: [],
+      splits: who.map(w => ({ traveler_id: w, value: 1 })),
+    }) as unknown as GroupData['expenses'][number]
+    const d = { ...data, group: { ...data.group, currency: 'USD' }, travelers: tv, payments: [], rates: {}, me: null,
+      expenses: [mk('e1', 'steven', 200, ['shirley', 'steven']), mk('e2', 'lavi', 100, ['shirley', 'lavi']), mk('e3', 'shirley', 60, ['shirley', 'cy'])] } as GroupData
+    const m = buildInvoiceModel({ data: d, billTo: ['shirley'], mode: 'pending', now: NOW })
+    expect(m.payOut).toEqual([{ name: 'Steven', amount: 10000 }, { name: 'Lavi', amount: 5000 }])
+    expect(m.payIn).toEqual([{ name: 'Cy', amount: 3000 }])
+    expect(m.totals.due).toBe(12000)
+    const c = buildInvoiceModel({ data: d, billTo: ['cy'], mode: 'pending', now: NOW })
+    expect(c.payOut).toEqual([{ name: 'Shirley', amount: 3000 }]); expect(c.payIn).toEqual([])
   })
   it('rejects an empty selection and builds readable names', () => {
     expect(() => buildInvoiceModel({ data, billTo: [], mode: 'final' })).toThrow()

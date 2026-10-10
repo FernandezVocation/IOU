@@ -9,7 +9,7 @@ const MUTED: [number, number, number] = [95, 107, 102]
 
 export interface OverviewPdfInput { people: Person[]; preparedBy: string; tripNames: string[]; includeEstimates: boolean; now?: Date; title?: string }
 
-/** A statement of what people owe you (and you owe them) across trips, with the items behind it. */
+/** A statement of what people owe you (and you owe them) across groups, with the items behind it. */
 export async function buildOverviewPdf(inp: OverviewPdfInput): Promise<Blob> {
   const { jsPDF } = await import('jspdf')
   const autoTable = (await import('jspdf-autotable')).default
@@ -36,14 +36,14 @@ export async function buildOverviewPdf(inp: OverviewPdfInput): Promise<Blob> {
     doc.setFont('helvetica', 'bold'); doc.setTextColor(...INK); const lines = doc.splitTextToSize(l1(v), 140) as string[]; doc.text(lines, mg + 28, y); y += 5.2 * lines.length
   }
   if (inp.preparedBy) kv('Prepared for', inp.preparedBy)
-  kv('Trips', inp.tripNames.length ? inp.tripNames.join(', ') : 'None')
+  kv('Groups', inp.tripNames.length ? inp.tripNames.join(', ') : 'None')
   kv('Amounts', inp.includeEstimates ? 'Includes estimated amounts' : 'Confirmed amounts only')
   doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...MUTED)
   const note = doc.splitTextToSize('Positive amounts are owed to you; negative amounts are what you owe. Amounts in different currencies are never converted or combined. Payments still waiting for the receiver to confirm are listed but not counted.', W - 2 * mg) as string[]
   doc.text(note, mg, y + 1); y += note.length * 4 + 6
 
   if (!inp.people.length) {
-    doc.setFontSize(11); doc.setTextColor(...INK); doc.text('No outstanding balances for the selected trips.', mg, y)
+    doc.setFontSize(11); doc.setTextColor(...INK); doc.text('No outstanding balances for the selected groups.', mg, y)
   } else {
     heading('Summary')
     const body: string[][] = []
@@ -51,7 +51,7 @@ export async function buildOverviewPdf(inp: OverviewPdfInput): Promise<Blob> {
       const pend = c.trips.reduce((s, t) => s + t.pendingToMe + t.pendingFromMe, 0)
       body.push([p.name, c.net > 0 ? 'owes you' : c.net < 0 ? 'you owe' : 'settled', A(c.net, c.currency) + (pend ? `  (+${A(pend, c.currency)} pending)` : ''), c.trips.map(t => t.groupName).join(', ')])
     }
-    table({ head: [['Person', '', 'Amount', 'Trips']], body: body.map(r => r.map(l1)), columnStyles: { 2: { halign: 'right', cellWidth: 52 } } })
+    table({ head: [['Person', '', 'Amount', 'Groups']], body: body.map(r => r.map(l1)), columnStyles: { 2: { halign: 'right', cellWidth: 52 } } })
 
     const tot = totalsByCurrency(inp.people)
     if (tot.length) {
@@ -65,14 +65,14 @@ export async function buildOverviewPdf(inp: OverviewPdfInput): Promise<Blob> {
         doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...MUTED); y += 3
         doc.text(l1(`${c.currency}: ${c.net > 0 ? `${p.name} owes you ${A(c.net, c.currency)}` : c.net < 0 ? `You owe ${p.name} ${A(c.net, c.currency)}` : 'settled'}`), mg, y); y += 3
         table({
-          head: [['Trip', 'Net', 'Pending (not counted)']],
+          head: [['Group', 'Net', 'Pending (not counted)']],
           body: c.trips.map(t => [l1(t.groupName + (t.estimated ? ' (includes estimates)' : '')), (t.net >= 0 ? '+' : '-') + A(t.net, c.currency), t.pendingToMe || t.pendingFromMe ? [t.pendingToMe ? `${p.name} paid you ${A(t.pendingToMe, c.currency)}` : '', t.pendingFromMe ? `You paid ${p.name} ${A(t.pendingFromMe, c.currency)}` : ''].filter(Boolean).join('; ') : '-']),
           foot: [['Total', (c.net >= 0 ? '+' : '-') + A(c.net, c.currency), '']],
           columnStyles: { 1: { halign: 'right', cellWidth: 34 } },
         })
         const rows = c.trips.flatMap(t => t.rows.map(r => ({ ...r, trip: t.groupName }))).sort((a, b) => a.date.localeCompare(b.date))
         table({
-          head: [['Date', 'Trip', 'Item', 'Amount']],
+          head: [['Date', 'Group', 'Item', 'Amount']],
           body: rows.map(r => [r.date, l1(r.trip), l1(r.text), (r.amount >= 0 ? '+' : '-') + A(r.amount, c.currency)]),
           columnStyles: { 0: { cellWidth: 20 }, 1: { cellWidth: 32 }, 3: { halign: 'right', cellWidth: 34 } },
           styles: { fontSize: 8, cellPadding: 1.5, font: 'helvetica', textColor: INK, lineColor: [220, 225, 220] },

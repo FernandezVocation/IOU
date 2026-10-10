@@ -67,8 +67,11 @@ function basisFor(e: Expense, party: Set<string>): string {
  * "Them" can be several travelers (a couple, a family): they are billed together, and
  * anything they paid or owe each other cancels out.
  */
-export function buildInvoiceModel(args: { data: GroupData; billTo: string[]; mode: InvoiceMode; note?: string; preparedBy?: string; now?: Date }): InvoiceModel {
+export type InvoiceSettle = 'itemized' | 'fewest'
+
+export function buildInvoiceModel(args: { data: GroupData; billTo: string[]; mode: InvoiceMode; note?: string; preparedBy?: string; now?: Date; settle?: InvoiceSettle }): InvoiceModel {
   const { data, billTo, mode } = args
+  const settle: InvoiceSettle = args.settle ?? 'itemized'
   if (!billTo.length) throw new Error('Choose at least one person to bill.')
   const cur = data.group.currency
   const party = new Set(billTo)
@@ -117,18 +120,34 @@ export function buildInvoiceModel(args: { data: GroupData; billTo: string[]; mod
   const paid = paidLines.reduce((s, l) => s + l.paid, 0)
   const due = share - paid - made + received
 
-  // Payment plan with the billed travelers merged into one party.
-  const merged: Record<string, number> = {}
-  const order: string[] = []
-  for (const t of data.travelers) {
-    if (party.has(t.id)) {
-      if (!(PARTY in merged)) { merged[PARTY] = 0; order.push(PARTY) }
-      merged[PARTY] += R.balance[t.id]
-    } else { merged[t.id] = R.balance[t.id]; order.push(t.id) }
+  // Who the billed party settles with.
+  // itemized: person by person, so each amount matches the expenses shared with them (the same as the Balances tab).
+  // fewest: the smallest number of payments, which can route money through someone else.
+  let payOut: Array<{ name: string; amount: number }> = []
+  let payIn: Array<{ name: string; amount: number }> = []
+  if (settle === 'itemized') {
+    const out = new Map<string, number>(), inn = new Map<string, number>()
+    const add = (m: Map<string, number>, id: string, n: number) => m.set(id, (m.get(id) ?? 0) + n)
+    for (const p of R.pairs) {
+      const dIn = party.has(p.debtor), cIn = party.has(p.creditor)
+      if (dIn === cIn) continue
+      if (dIn) add(out, p.creditor, p.net); else add(inn, p.debtor, p.net)
+    }
+    const list = (m: Map<string, number>) => [...m].filter(([, a]) => a > 0).sort((a, b) => b[1] - a[1]).map(([id, amount]) => ({ name: nm(id), amount }))
+    payOut = list(out); payIn = list(inn)
+  } else {
+    const merged: Record<string, number> = {}
+    const order: string[] = []
+    for (const t of data.travelers) {
+      if (party.has(t.id)) {
+        if (!(PARTY in merged)) { merged[PARTY] = 0; order.push(PARTY) }
+        merged[PARTY] += R.balance[t.id]
+      } else { merged[t.id] = R.balance[t.id]; order.push(t.id) }
+    }
+    const plan = planTransfers(merged, order)
+    payOut = plan.filter(t => t.from === PARTY).map(t => ({ name: nm(t.to), amount: t.amount }))
+    payIn = plan.filter(t => t.to === PARTY).map(t => ({ name: nm(t.from), amount: t.amount }))
   }
-  const plan = planTransfers(merged, order)
-  const payOut = plan.filter(t => t.from === PARTY).map(t => ({ name: nm(t.to), amount: t.amount }))
-  const payIn = plan.filter(t => t.to === PARTY).map(t => ({ name: nm(t.from), amount: t.amount }))
 
   const now = args.now ?? new Date()
   const ymd = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
@@ -179,7 +198,7 @@ export async function buildInvoicePdf(m: InvoiceModel, images: InvoiceImage[] = 
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...MUTED); doc.text(k, mg, y)
     doc.setFont('helvetica', 'bold'); doc.setTextColor(...INK); doc.text(doc.splitTextToSize(l1(v), 140) as string[], mg + 28, y); y += 5.5
   }
-  kv('Trip', m.groupName)
+  kv('Group', m.groupName)
   kv('Billed to', m.billToLabel)
   if (m.preparedBy) kv('Prepared by', m.preparedBy)
   kv('Currency', cur)
@@ -197,7 +216,7 @@ export async function buildInvoicePdf(m: InvoiceModel, images: InvoiceImage[] = 
   y += 32
 
   // ---- 1) shares
-  heading('Your share of trip expenses')
+  heading('Your share of group expenses')
   table({
     head: [['Date', 'Description', 'Paid by', 'Expense total', 'Your portion', 'Your share']],
     body: m.shareLines.length ? m.shareLines.map(l => [when(l), desc(l), l1(l.payerName), A(l.total), l1(l.basis), A(l.share)]) : [['', 'No expenses are shared with you yet.', '', '', '', '']],
@@ -240,7 +259,7 @@ export async function buildInvoicePdf(m: InvoiceModel, images: InvoiceImage[] = 
   // ---- summary
   need(60)
   heading('Summary')
-  const rows: string[][] = [['Total share of trip costs', A(m.totals.share)], ['Less: expenses you paid yourself', '-' + A(m.totals.paid)]]
+  const rows: string[][] = [['Total share of group costs', A(m.totals.share)], ['Less: expenses you paid yourself', '-' + A(m.totals.paid)]]
   if (m.totals.made) rows.push(['Less: payments you already made', '-' + A(m.totals.made)])
   if (m.totals.received) rows.push(['Plus: payments you received', '+' + A(m.totals.received)])
   rows.push([owes ? 'AMOUNT DUE' : square ? 'BALANCE' : 'CREDIT OWED TO YOU', square ? A(0) : A(m.totals.due)])
@@ -256,12 +275,12 @@ export async function buildInvoicePdf(m: InvoiceModel, images: InvoiceImage[] = 
   heading(owes ? 'How to pay' : 'Settling up')
   doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...INK); y += 3
   const say = (t: string) => { const lines = doc.splitTextToSize(l1(t), W - 2 * mg) as string[]; need(lines.length * 5 + 2); doc.text(lines, mg, y); y += lines.length * 5 + 1 }
-  if (owes) m.payOut.forEach(p => say(`Pay ${p.name}: ${A(p.amount)}`))
-  else if (square) say('You are all square. Nothing to pay.')
-  else say('Nothing to pay. You are owed money.')
-  if (!owes && m.payIn.length) m.payIn.forEach(p => say(`${p.name} is expected to pay you ${A(p.amount)}`))
+  if (m.payOut.length) { doc.setFont('helvetica', 'bold'); say('You pay'); doc.setFont('helvetica', 'normal'); m.payOut.forEach(p => say(`Pay ${p.name}: ${A(p.amount)}`)) }
+  if (m.payIn.length) { doc.setFont('helvetica', 'bold'); say(m.payOut.length ? 'You are also owed' : 'You are owed'); doc.setFont('helvetica', 'normal'); m.payIn.forEach(p => say(`${p.name} owes you ${A(p.amount)}`)) }
+  if (m.payOut.length && m.payIn.length) say(owes ? `After those are settled, you still pay a net ${A(m.totals.due)}.` : square ? 'Those cancel out exactly.' : `After those are settled, you are owed a net ${A(-m.totals.due)}.`)
+  if (!m.payOut.length && !m.payIn.length) say(square ? 'You are all square. Nothing to pay.' : owes ? 'Nothing to settle yet.' : 'Nothing to pay.')
   if (m.note) { y += 2; doc.setFont('helvetica', 'bold'); say('Notes'); doc.setFont('helvetica', 'normal'); say(m.note) }
-  if (m.counts.estimated && m.mode === 'pending') { y += 2; doc.setTextColor(...MUTED); doc.setFontSize(8.5); say('Amounts marked "estimated" use a trip exchange rate and may change once the card statement amount is entered.') }
+  if (m.counts.estimated && m.mode === 'pending') { y += 2; doc.setTextColor(...MUTED); doc.setFontSize(8.5); say('Amounts marked "estimated" use an exchange rate set for the group and may change once the card statement amount is entered.') }
   if (m.counts.excluded) { doc.setTextColor(...MUTED); doc.setFontSize(8.5); say(`${m.counts.excluded} expense${m.counts.excluded === 1 ? ' is' : 's are'} not included because the ${cur} amount is not settled yet.`) }
   if (m.counts.missing) { doc.setTextColor(...MUTED); doc.setFontSize(8.5); say(`${m.counts.missing} expense${m.counts.missing === 1 ? ' has' : 's have'} no exchange rate and ${m.counts.missing === 1 ? 'is' : 'are'} not included.`) }
 

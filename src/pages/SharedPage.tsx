@@ -107,10 +107,16 @@ function Inner() {
 
       <label className="switch"><input type="checkbox" checked={includeEst} onChange={e => setIncludeEst(e.target.checked)} /><span>Include estimated amounts</span></label>
 
-      {(owes ? m.payOut : m.payIn).length > 0 && (
+      {m.payOut.length > 0 && (
         <div className="panel">
-          <h2>{owes ? 'How to pay' : 'Who will pay you'}</h2>
-          {(owes ? m.payOut : m.payIn).map(p => <div className="ln" key={p.name}><span>{owes ? `Pay ${p.name}` : p.name}</span><span className="a"><b>{fmtMoney(p.amount, cur)}</b></span></div>)}
+          <h2>How to pay</h2>
+          {m.payOut.map(p => <div className="ln" key={'o' + p.name}><span>Pay {p.name}</span><span className="a"><b>{fmtMoney(p.amount, cur)}</b></span></div>)}
+        </div>
+      )}
+      {m.payIn.length > 0 && (
+        <div className="panel">
+          <h2>{m.payOut.length ? 'You are also owed' : 'Who will pay you'}</h2>
+          {m.payIn.map(p => <div className="ln" key={'i' + p.name}><span>{p.name}</span><span className="a"><b>{fmtMoney(p.amount, cur)}</b></span></div>)}
         </div>
       )}
 

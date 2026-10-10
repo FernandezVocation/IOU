@@ -6,6 +6,7 @@ import { buildOverview, totalsByCurrency, type Person } from '../lib/overview'
 import { buildOverviewBreakdown, type Metric } from '../lib/breakdown'
 import BreakdownList, { CategoryBar } from '../components/BreakdownList'
 import { buildOverviewPdf } from '../lib/overviewPdf'
+import { buildOverviewXlsx } from '../lib/overviewXlsx'
 import { downloadBlob } from '../lib/exporters'
 import { fmtMoney } from '../lib/money'
 import { fmtDate, friendly, slug, todayStr } from '../lib/format'
@@ -67,6 +68,12 @@ export default function OverviewPage() {
     catch (e) { toast(friendly(e)) } finally { setBusy(false) }
   }
 
+  async function xlsx(list: Person[], name = 'overview') {
+    setBusy(true)
+    try { downloadBlob(await buildOverviewXlsx({ people: list, preparedBy: displayName, tripNames, includeEstimates: includeEst }), `balances-${slug(name)}-${todayStr()}.xlsx`) }
+    catch (e) { toast(friendly(e)) } finally { setBusy(false) }
+  }
+
   return (
     <>
       <div className="app">
@@ -124,6 +131,7 @@ export default function OverviewPage() {
 
             {view === 'balances' && <div className="row2" style={{ margin: '4px 0 10px' }}>
               <button className="btn primary" disabled={busy || !people.length} onClick={() => pdf(people)}>{busy ? 'Building…' : 'Export PDF'}</button>
+              <button className="btn" disabled={busy || !people.length} onClick={() => xlsx(people)}>Export Excel</button>
               <button className="btn" onClick={() => setPeopleOpen(true)}>People</button>
             </div>}
 
@@ -136,7 +144,11 @@ export default function OverviewPage() {
                     {c.net > 0 ? `owes you ${fmtMoney(c.net, c.currency)}` : c.net < 0 ? `you owe ${fmtMoney(-c.net, c.currency)}` : `${c.currency} settled`}
                   </div>
                 ))}
-                <div className="muted small" style={{ marginTop: 2 }}>{p.tripNames.join(' · ')}</div>
+                {p.currencies.map(c => c.trips.length > 0 && (
+                  <div key={c.currency + 'g'} className="muted small" style={{ marginTop: 3 }}>
+                    {c.trips.map(t => <div key={t.groupId + t.theirId} style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}><span>{t.groupName}</span><span className={t.net >= 0 ? 'pos-t' : 'neg-t'}>{t.net >= 0 ? '+' : '−'}{fmtMoney(Math.abs(t.net), c.currency)}</span></div>)}
+                  </div>
+                ))}
               </button>
             ))}
           </>
@@ -167,6 +179,7 @@ export default function OverviewPage() {
           ))}
           <button className="btn primary block" onClick={() => setRecord(open)}>Record a payment</button>
           <button className="btn block" style={{ marginTop: 10 }} disabled={busy} onClick={() => pdf([open], 'BALANCE STATEMENT', open.name)}>{busy ? 'Building…' : `Export PDF for ${open.name}`}</button>
+          <button className="btn block" style={{ marginTop: 10 }} disabled={busy} onClick={() => xlsx([open], open.name)}>Export Excel for {open.name}</button>
         </Sheet>
       )}
       {record && <RecordAcrossSheet person={record} onClose={() => setRecord(null)} onSaved={load} />}

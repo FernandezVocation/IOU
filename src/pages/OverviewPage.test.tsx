@@ -166,7 +166,10 @@ describe('Jack owes me 100 (Banff) and 50 (Bar); I owe Jack 25 (Jill\'s Birthday
     await screen.findByText('Jack')
     expect(within(card('Jack')).getByText('owes you CAD 125.00')).toBeTruthy()
     expect(screen.getAllByText(/\+CAD 125\.00/).length).toBeGreaterThan(0)       // grand total box
-    expect(within(card('Jack')).getByText(/Banff · Bar · Jill/)).toBeTruthy()
+    // each group is listed on the card with its own signed amount, so the total can be read without opening it
+    const c = within(card('Jack'))
+    expect(c.getByText('Banff')).toBeTruthy(); expect(c.getByText('Bar')).toBeTruthy(); expect(c.getByText("Jill's Birthday")).toBeTruthy()
+    expect(c.getByText('+CAD 100.00')).toBeTruthy(); expect(c.getByText('+CAD 50.00')).toBeTruthy(); expect(c.getByText('−CAD 25.00')).toBeTruthy()
   })
   it('shows each trip with its own sign in the breakdown (+100, +50, -25)', async () => {
     mount()

@@ -15,7 +15,7 @@ function notes({ data, result, mode }: Ctx): string[] {
   const cur = data.group.currency
   const n: string[] = []
   n.push(mode === 'pending' ? 'PENDING breakdown: includes estimated amounts' : 'FINAL breakdown: confirmed amounts only')
-  if (mode === 'pending' && result.counts.estimated) n.push(`${result.counts.estimated} expense(s) are estimated at trip rates (${fmtPlain(result.estimatedTotal, cur)} ${cur}).`)
+  if (mode === 'pending' && result.counts.estimated) n.push(`${result.counts.estimated} expense(s) are estimated at the group's exchange rates (${fmtPlain(result.estimatedTotal, cur)} ${cur}).`)
   if (mode === 'final' && result.counts.excluded) n.push(`${result.counts.excluded} expense(s) excluded because the ${cur} amount is not settled yet.`)
   if (result.counts.missing) n.push(`${result.counts.missing} expense(s) have no exchange rate and are not counted.`)
   return n
