@@ -2,10 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import GroupIcon from '../components/GroupIcon'
 import TypeIcon from '../components/TypeIcon'
-import QrView from '../components/QrView'
 import { Spinner, ToastProvider } from '../components/ui'
 import { friendly } from '../lib/format'
-import { fetchSharedVault, openVaultSession, signedVaultUrls, type SharedVault, type SharedVaultItem } from '../lib/sharedVault'
+import { fetchSharedVault, type SharedVault, type SharedVaultItem } from '../lib/sharedVault'
 import { arrange, directionsUrl, mapUrl, typeOf, websiteUrl, whenLabel, type VaultItem } from '../lib/vault'
 
 type State = { s: 'loading' } | { s: 'invalid' } | { s: 'error'; msg: string } | { s: 'ok'; v: SharedVault }
@@ -15,27 +14,17 @@ export default function SharedVaultPage() {
   return <ToastProvider><Inner /></ToastProvider>
 }
 
-const asItem = (i: SharedVaultItem): VaultItem => ({ ...i, vault_id: 'shared', private: false, created_by: '', files: i.files.map(f => ({ ...f, item_id: i.id })) })
+const asItem = (i: SharedVaultItem): VaultItem => ({ ...i, vault_id: 'shared', private: false, created_by: '', files: [] })
 
 function Inner() {
   const { token = '' } = useParams()
   const [state, setState] = useState<State>({ s: 'loading' })
-  const [urls, setUrls] = useState<Record<string, string>>({})
-  const [noFiles, setNoFiles] = useState(false)
   const [open, setOpen] = useState<SharedVaultItem | null>(null)
-  const [full, setFull] = useState<SharedVaultItem | null>(null)
 
   const load = useCallback(async () => {
     try {
       const v = await fetchSharedVault(token)
       setState(v ? { s: 'ok', v } : { s: 'invalid' })
-      if (v) {
-        const paths = v.items.flatMap(i => i.files.map(f => f.path))
-        if (paths.length) {
-          const c = await openVaultSession(token)
-          if (c) setUrls(await signedVaultUrls(c, paths)); else setNoFiles(true)
-        }
-      }
     } catch (e) { setState({ s: 'error', msg: friendly(e) }) }
   }, [token])
 
@@ -54,7 +43,6 @@ function Inner() {
   if (state.s === 'error') return <div className="auth"><div className="notice err" role="alert">{state.msg}</div><button className="btn" onClick={load}>Try again</button></div>
 
   const v = state.v
-  const files = (i: SharedVaultItem) => i.files.filter(f => urls[f.path]).map(f => ({ url: urls[f.path], label: f.label || f.name, mime: f.mime }))
 
   return (
     <div className="app">
@@ -66,7 +54,7 @@ function Inner() {
           </div>
         </div>
       </div>
-      {noFiles && <div className="notice">Photos and PDFs aren’t available on this link right now. The details below are.</div>}
+      <div className="notice">Read-only link: details only. Attached photos, PDFs and QR codes aren’t included, so ask the owner to send those directly.</div>
       {v.items.length === 0 && <div className="empty"><b>Nothing shared yet</b></div>}
       {sections.map(s => (
         <section key={s.key} className="vsec" aria-label={s.label}>
@@ -82,13 +70,12 @@ function Inner() {
       ))}
 
       {open && (() => {
-        const it = asItem(open), imgs = files(open), site = websiteUrl(open.website), map = mapUrl(it), dir = directionsUrl(it)
+        const it = asItem(open), site = websiteUrl(open.website), map = mapUrl(it), dir = directionsUrl(it)
         return (
           <div className="sheet" role="dialog" aria-modal="true" aria-label={open.title}>
             <div className="in">
               <header><span /><h2>{open.title}</h2><button className="btn small" onClick={() => setOpen(null)}>Close</button></header>
               <div className="sub">{typeOf(open.type).label} · {whenLabel(open)}</div>
-              {imgs.length > 0 && <button className="btn primary block" style={{ marginTop: 10 }} onClick={() => setFull(open)}>Show {imgs.length > 1 ? 'codes' : 'ticket or code'} full screen</button>}
               {(map || dir || site) && <div className="vlinks">
                 {map && <a className="btn" href={map} target="_blank" rel="noopener noreferrer">Map</a>}
                 {dir && <a className="btn" href={dir} target="_blank" rel="noopener noreferrer">Directions</a>}
@@ -99,14 +86,11 @@ function Inner() {
                 {open.address && <div><span>Address</span><b>{open.address}</b></div>}
                 {open.notes && <div><span>Notes</span><b style={{ whiteSpace: 'pre-wrap' }}>{open.notes}</b></div>}
               </div>
-              {open.files.length > 0 && <div className="vfiles">{open.files.map(f => urls[f.path] && (
-                <div className="vfile" key={f.id}>{f.mime.startsWith('image/') ? <a href={urls[f.path]} target="_blank" rel="noopener noreferrer"><img src={urls[f.path]} alt={f.label || f.name || 'Attached file'} /></a> : <a className="btn" href={urls[f.path]} target="_blank" rel="noopener noreferrer">Open {f.name || 'PDF'}</a>}{f.label && <span className="muted small">{f.label}</span>}</div>
-              ))}</div>}
+              {open.file_count > 0 && <div className="muted small" style={{ marginTop: 8 }}>{open.file_count} attached file{open.file_count === 1 ? '' : 's'} not shown on read-only links.</div>}
             </div>
           </div>
         )
       })()}
-      {full && <QrView title={full.title} when={whenLabel(full)} images={files(full)} onClose={() => setFull(null)} />}
     </div>
   )
 }

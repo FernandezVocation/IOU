@@ -87,13 +87,12 @@ create table if not exists public.vault_link_items (
   foreign key (link_id, vault_id) references public.vault_links (id, vault_id) on delete cascade,
   foreign key (item_id, vault_id) references public.vault_items (id, vault_id) on delete cascade
 );
--- Who has opened a link, so they may read its files. Turning the link off deletes these rows.
-create table if not exists public.vault_link_viewers (
-  link_id    uuid not null references public.vault_links(id) on delete cascade,
-  user_id    uuid not null,
-  created_at timestamptz not null default now(),
-  primary key (link_id, user_id)
-);
+-- Read-only links carry details only. Files are never reachable through a link.
+-- (Clean-up for anyone who ran an earlier draft that let link holders read files.)
+drop policy if exists vault_files_obj_read on storage.objects;
+drop function if exists public.viewer_can_read_vault_file(text);
+drop function if exists public.claim_vault_link(text);
+drop table if exists public.vault_link_viewers;
 
 create or replace function public.touch_vault_item() returns trigger language plpgsql as $$
 begin new.updated_at = now(); return new; end $$;
@@ -137,10 +136,9 @@ alter table public.vault_items       enable row level security;
 alter table public.vault_files       enable row level security;
 alter table public.vault_links       enable row level security;
 alter table public.vault_link_items  enable row level security;
-alter table public.vault_link_viewers enable row level security;
 
 revoke all on public.vaults, public.vault_members, public.vault_items, public.vault_files,
-              public.vault_links, public.vault_link_items, public.vault_link_viewers from anon, authenticated;
+              public.vault_links, public.vault_link_items from anon, authenticated;
 grant select on public.vaults, public.vault_members to authenticated;
 grant update (name, icon, color) on public.vaults to authenticated;
 grant delete on public.vaults, public.vault_members to authenticated;
@@ -295,37 +293,6 @@ begin
   return tok;
 end $$;
 
-create or replace function public.claim_vault_link(p_token text) returns boolean
-language plpgsql security definer set search_path = public as $$
-declare l public.vault_links;
-begin
-  if auth.uid() is null then return false; end if;
-  if p_token is null or p_token !~ '^[0-9a-f]{48}$' then return false; end if;
-  select * into l from public.vault_links where token = p_token and (expires_at is null or expires_at > now());
-  if not found then return false; end if;
-  insert into public.vault_link_viewers (link_id, user_id) values (l.id, auth.uid()) on conflict do nothing;
-  return true;
-end $$;
-
--- Which files a link holder may read: items in a 'vault' link that are not private, or the items picked.
-create or replace function public.viewer_can_read_vault_file(object_name text) returns boolean
-language plpgsql stable security definer set search_path = public as $$
-declare vid uuid; iid uuid;
-begin
-  vid := ((string_to_array(object_name, '/'))[1])::uuid;
-  iid := ((string_to_array(object_name, '/'))[2])::uuid;
-  return exists (
-    select 1 from public.vault_link_viewers v
-    join public.vault_links l on l.id = v.link_id
-    join public.vault_items i on i.id = iid and i.vault_id = l.vault_id and not i.private
-    where v.user_id = auth.uid() and l.vault_id = vid and (l.expires_at is null or l.expires_at > now())
-      and (l.scope = 'vault' or exists (select 1 from public.vault_link_items li where li.link_id = l.id and li.item_id = iid)));
-exception when others then
-  return false;
-end $$;
-revoke all on function public.viewer_can_read_vault_file(text) from public;
-grant execute on function public.viewer_can_read_vault_file(text) to authenticated;
-
 -- The one anonymous entry point. Unknown, malformed, expired and turned-off tokens all return null.
 create or replace function public.get_shared_vault(p_token text) returns jsonb
 language plpgsql security definer set search_path = public as $$
@@ -342,8 +309,7 @@ begin
       select jsonb_agg(jsonb_build_object(
         'id', i.id, 'type', i.type, 'title', i.title, 'starts_on', i.starts_on, 'starts_at', i.starts_at,
         'ends_on', i.ends_on, 'ends_at', i.ends_at, 'place', i.place, 'address', i.address, 'website', i.website, 'notes', i.notes,
-        'files', coalesce((select jsonb_agg(jsonb_build_object('id', f.id, 'path', f.path, 'name', f.name, 'mime', f.mime, 'label', f.label) order by f.created_at)
-                           from public.vault_files f where f.item_id = i.id), '[]'::jsonb))
+        'file_count', (select count(*) from public.vault_files f where f.item_id = i.id))
         order by i.starts_on nulls last, i.starts_at nulls last, i.title)
       from public.vault_items i
       where i.vault_id = l.vault_id and not i.private
@@ -355,10 +321,9 @@ end $$;
 
 revoke all on function public.create_vault(text, text, text, uuid, boolean), public.link_vault(uuid, uuid, boolean), public.unlink_vault(uuid),
   public.join_vault(text), public.set_vault_role(uuid, uuid, text), public.create_vault_link(uuid, text, text, uuid[], timestamptz),
-  public.claim_vault_link(text), public.get_shared_vault(text) from public;
+  public.get_shared_vault(text) from public;
 grant execute on function public.create_vault(text, text, text, uuid, boolean), public.link_vault(uuid, uuid, boolean), public.unlink_vault(uuid),
-  public.join_vault(text), public.set_vault_role(uuid, uuid, text), public.create_vault_link(uuid, text, text, uuid[], timestamptz),
-  public.claim_vault_link(text) to authenticated;
+  public.join_vault(text), public.set_vault_role(uuid, uuid, text), public.create_vault_link(uuid, text, text, uuid[], timestamptz) to authenticated;
 grant execute on function public.get_shared_vault(text) to anon, authenticated;
 
 -- ───────────────────────── file storage ─────────────────────────
@@ -389,7 +354,7 @@ on conflict (id) do nothing;
 
 drop policy if exists vault_files_obj_read on storage.objects;
 create policy vault_files_obj_read on storage.objects for select to authenticated
-  using (bucket_id = 'vault' and (public.can_read_vault_file(name) or public.viewer_can_read_vault_file(name)));
+  using (bucket_id = 'vault' and public.can_read_vault_file(name));
 drop policy if exists vault_files_obj_insert on storage.objects;
 create policy vault_files_obj_insert on storage.objects for insert to authenticated
   with check (bucket_id = 'vault' and public.can_write_vault_file(name));

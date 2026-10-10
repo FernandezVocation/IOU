@@ -130,19 +130,17 @@ select t.ok((select string_agg(k, ',' order by k) from (select jsonb_object_keys
 select t.ok(not (public.get_shared_vault(:'tok_all')::text ~ 'created_by|invite_code|user_id'), 'no account details leak');
 select t.fails($$select * from public.vault_items$$, 'the anonymous role cannot read tables directly');
 
--- A visitor opens the link, then may read files the link covers
+-- Links carry details only: no file paths, and a signed-in stranger cannot read files
+select t.ok(not (public.get_shared_vault(:'tok_all')::text ~ '"path"|"files"|storage'), 'a link never exposes file paths');
+select t.ok((public.get_shared_vault(:'tok_all') -> 'items' -> 0 ->> 'file_count') is not null, 'but says how many files an item has');
 reset role; set role authenticated;
 select set_config('request.jwt.claim.sub', :vis, false);
-select t.ok(public.claim_vault_link(:'tok_all') = true, 'a visitor claims a link');
-select t.ok((select count(*) from storage.objects where bucket_id='vault') = 1, 'and can read files on shared items');
-select t.ok((select count(*) from storage.objects where name like '%passport.png') = 0, 'but never files on private items');
-select t.ok((select count(*) from public.vault_items) = 0, 'a visitor still cannot read vault tables');
-select t.ok(public.claim_vault_link('nope') = false, 'a bad token claims nothing');
+select t.ok((select count(*) from storage.objects where bucket_id='vault') = 0, 'a stranger cannot read vault files, even with a link');
+select t.ok((select count(*) from public.vault_items) = 0, 'a stranger cannot read vault tables');
+select t.ok(to_regprocedure('public.claim_vault_link(text)') is null, 'no file-claiming function exists');
 -- turning the link off ends access at once
 select set_config('request.jwt.claim.sub', :ann, false);
 delete from public.vault_links where token=:'tok_all';
-select set_config('request.jwt.claim.sub', :vis, false);
-select t.ok((select count(*) from storage.objects where bucket_id='vault') = 0, 'turning a link off ends file access');
 reset role; set role anon;
 select t.ok(public.get_shared_vault(:'tok_all') is null, 'and the link stops working');
 
