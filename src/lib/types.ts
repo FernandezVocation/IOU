@@ -12,7 +12,8 @@ export interface Group {
 }
 export interface Member {
   user_id: string
-  role: 'owner' | 'member'
+  /** owner: everything. editor: adds expenses, changes only their own. viewer: read-only. */
+  role: 'owner' | 'editor' | 'viewer'
   joined_at: string
   display_name: string
 }
@@ -86,4 +87,6 @@ export interface GroupData {
   rates: Record<string, number>
   me: Traveler | null
   isOwner: boolean
+  /** Owner or editor. Missing (old data, tests) means yes; only a read-only view sets it to false. */
+  canEdit?: boolean
 }

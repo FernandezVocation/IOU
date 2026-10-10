@@ -36,5 +36,6 @@ export function assembleGroup(a: {
     rates: Object.fromEntries(a.rates.map(x => [x.currency, Number(x.rate)])),
     me: travelers.find(x => x.user_id === a.userId) ?? null,
     isOwner: members.some(x => x.user_id === a.userId && x.role === 'owner'),
+    canEdit: members.some(x => x.user_id === a.userId && (x.role === 'owner' || x.role === 'editor')),
   }
 }

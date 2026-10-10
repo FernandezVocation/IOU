@@ -6,26 +6,27 @@ import { Avatar, useArm, useToast } from './ui'
 import { useGroup } from '../pages/GroupShell'
 
 interface LinkRow {
-  id: string; label: string; token: string; created_at: string; expires_at: string | null
+  id: string; scope?: 'group' | 'person'; label: string; token: string; created_at: string; expires_at: string | null
   last_viewed_at: string | null; view_count: number; share_link_travelers: Array<{ traveler_id: string }>
 }
 export const shareUrl = (token: string) => `${window.location.origin}/b/${token}`
 
 const EXPIRY: Array<[string, string, number | null]> = [['never', 'Never expires', null], ['7', 'Expires in 7 days', 7], ['30', 'Expires in 30 days', 30], ['90', 'Expires in 90 days', 90]]
 
-/** Members create read-only balance links for people who don't have accounts. */
+/** The owner creates read-only links for anyone, with or without an account: the whole group, or specific people. */
 export default function BalanceLinks() {
   const { data } = useGroup()
   const toast = useToast()
   const arm = useArm()
   const [links, setLinks] = useState<LinkRow[] | null>(null)
+  const [scope, setScope] = useState<'group' | 'person'>('person')
   const [pick, setPick] = useState<string[]>([])
   const [expiry, setExpiry] = useState('never')
   const [busy, setBusy] = useState(false)
 
   const load = useCallback(async () => {
     const { data: rows, error } = await supabase.from('share_links')
-      .select('id, label, token, created_at, expires_at, last_viewed_at, view_count, share_link_travelers(traveler_id)')
+      .select('id, scope, label, token, created_at, expires_at, last_viewed_at, view_count, share_link_travelers(traveler_id)')
       .eq('group_id', data.group.id).order('created_at')
     if (error) toast(friendly(error)); else setLinks(rows as unknown as LinkRow[])
   }, [data.group.id, toast])
@@ -37,11 +38,11 @@ export default function BalanceLinks() {
   const when = (iso: string) => new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 
   async function create() {
-    if (!pick.length) return
+    if (scope === 'person' && !pick.length) return
     setBusy(true)
     const days = EXPIRY.find(e => e[0] === expiry)?.[2] ?? null
-    const label = joinNames(data.travelers.filter(t => pick.includes(t.id)).map(t => t.name))
-    const { error } = await supabase.rpc('create_share_link', { p_group: data.group.id, p_label: label, p_traveler_ids: pick, p_expires_at: days ? new Date(Date.now() + days * 86_400_000).toISOString() : null })
+    const label = scope === 'group' ? 'Whole group' : joinNames(data.travelers.filter(t => pick.includes(t.id)).map(t => t.name))
+    const { error } = await supabase.rpc('create_share_link', { p_group: data.group.id, p_label: label, p_traveler_ids: scope === 'group' ? [] : pick, p_expires_at: days ? new Date(Date.now() + days * 86_400_000).toISOString() : null, p_scope: scope })
     setBusy(false)
     if (error) { toast(friendly(error)); return }
     setPick([]); toast('Link created. Copy it and send it to them.'); load()
@@ -61,23 +62,34 @@ export default function BalanceLinks() {
 
   return (
     <div className="sect">
-      <h2>Balance links</h2>
-      <div className="muted small">For people without an account. Send someone a private link and they can check their own balance, with every item and how to pay. It’s read-only: they can’t change anything, and they never see receipts or notes. They can see the group’s expenses and how each is split, and anyone who gets the link can open it, so send it only to the person it’s for.</div>
+      <h2>Read-only links</h2>
+      <div className="muted small">Share a view of this group with anyone, even without an account. They can look but never change anything, and they never see notes. Anyone who gets a link can open it, so send it only to the people it’s for. You can turn a link off at any time.</div>
 
       <div className="panel">
-        <div className="lbl" style={{ marginTop: 0 }}>Create a link for</div>
-        {data.travelers.map(t => (
-          <label className="radio" key={t.id}>
-            <input type="checkbox" checked={pick.includes(t.id)} onChange={() => toggle(t.id)} />
-            <Avatar name={t.name} color={t.color} /><span>{t.name}{!t.user_id && <span className="muted small"> · no account</span>}</span>
-          </label>
-        ))}
-        {noAccount.length > 0 && <button className="linkbtn" onClick={() => setPick(noAccount.map(t => t.id))}>Select everyone without an account</button>}
-        <div className="muted small">Pick several to give a couple or family one shared link.</div>
+        <div className="lbl" style={{ marginTop: 0 }}>What should the link show?</div>
+        <div className="seg" role="group" aria-label="What the link shows" style={{ marginBottom: 8 }}>
+          <button aria-pressed={scope === 'person'} onClick={() => setScope('person')}>Specific people</button>
+          <button aria-pressed={scope === 'group'} onClick={() => setScope('group')}>Entire group</button>
+        </div>
+        {scope === 'group' ? (
+          <div className="muted small">Everything: every expense and how it was split, balances, payments and receipt photos. Receipts can include card or personal details, so share this one carefully.</div>
+        ) : (
+          <>
+            <div className="muted small" style={{ marginBottom: 6 }}>Only the expenses each person paid or is part of, with just their own share, who they pay and who owes them. No receipts.</div>
+            {data.travelers.map(t => (
+              <label className="radio" key={t.id}>
+                <input type="checkbox" checked={pick.includes(t.id)} onChange={() => toggle(t.id)} />
+                <Avatar name={t.name} color={t.color} /><span>{t.name}{!t.user_id && <span className="muted small"> · no account</span>}</span>
+              </label>
+            ))}
+            {noAccount.length > 0 && <button className="linkbtn" onClick={() => setPick(noAccount.map(t => t.id))}>Select everyone without an account</button>}
+            <div className="muted small">Pick several to give a couple or family one shared link.</div>
+          </>
+        )}
         <select value={expiry} onChange={e => setExpiry(e.target.value)} aria-label="Link expiry" style={{ marginTop: 10 }}>
           {EXPIRY.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
         </select>
-        <button className="btn primary block" style={{ marginTop: 10 }} disabled={!pick.length || busy} onClick={create}>{busy ? 'Creating…' : pick.length > 1 ? 'Create one link for these people' : 'Create link'}</button>
+        <button className="btn primary block" style={{ marginTop: 10 }} disabled={(scope === 'person' && !pick.length) || busy} onClick={create}>{busy ? 'Creating…' : scope === 'group' ? 'Create link for the entire group' : pick.length > 1 ? 'Create one link for these people' : 'Create link'}</button>
       </div>
 
       {links?.map(l => {
@@ -86,7 +98,7 @@ export default function BalanceLinks() {
         return (
           <div className="panel" key={l.id}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
-              <b>{l.share_link_travelers.map(x => nameOf(x.traveler_id)).join(', ') || l.label}</b>
+              <b>{l.scope === 'group' ? 'Entire group' : l.share_link_travelers.map(x => nameOf(x.traveler_id)).join(', ') || l.label}</b>
               {expired && <span className="tag">expired</span>}
             </div>
             <div className="muted small">

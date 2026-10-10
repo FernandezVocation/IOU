@@ -16,7 +16,7 @@ const trav = (id: string, name: string, user_id: string | null) => ({ id, group_
 const hotel: Expense = { id: 'e', group_id: 'g', spent_on: '2026-09-12', spent_at: null, vendor: 'Hotel', location: '', category: '', notes: '', amount: 300, currency: 'CAD', settled_amount: null, payer_id: 'alex', split_mode: 'equal', created_at: '', updated_at: '', receipts: [],
   splits: [{ traveler_id: 'alex', value: 1 }, { traveler_id: 'sam', value: 1 }, { traveler_id: 'jo', value: 1 }] }
 const pay = (o: Partial<Payment> = {}): Payment => ({ id: 'p1', group_id: 'g', from_id: 'sam', to_id: 'alex', amount: 40, paid_on: '2026-09-20', method: 'E-transfer', note: '', status: 'pending', created_by: 'u2', created_at: '2026-09-20T10:00:00Z', ...o } as Payment)
-const members = [{ user_id: 'u1', role: 'owner' as const, joined_at: '', display_name: 'Alex' }, { user_id: 'u2', role: 'member' as const, joined_at: '', display_name: 'Sam' }]
+const members = [{ user_id: 'u1', role: 'owner' as const, joined_at: '', display_name: 'Alex' }, { user_id: 'u2', role: 'editor' as const, joined_at: '', display_name: 'Sam' }]
 const data = (payments: Payment[], me: 'alex' | 'sam', owner: boolean): GroupData => ({
   group: { id: 'g', name: 'Lisbon', currency: 'CAD', invite_code: '', created_by: 'u1', created_at: '' }, members,
   travelers: [trav('alex', 'Alex', 'u1'), trav('sam', 'Sam', 'u2'), trav('jo', 'Jordan', null)], expenses: [hotel], payments, rates: {},

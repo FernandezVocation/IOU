@@ -22,6 +22,7 @@ export const statusLabel = (p: Payment): 'Sent' | 'Received' => (isPending(p) ? 
 export interface PaymentPerms { canEdit: boolean; canDelete: boolean; canConfirm: boolean; canUnconfirm: boolean; confirmHint: string }
 export function paymentPerms(data: GroupData, p: Payment, userId: string): PaymentPerms {
   const recvUser = travelerUser(data, p.to_id), payUser = travelerUser(data, p.from_id)
+  if (data.canEdit === false) return { canEdit: false, canDelete: false, canConfirm: false, canUnconfirm: false, confirmHint: isPending(p) ? 'Sent. Waiting for confirmation.' : '' }
   const isRecv = recvUser !== null && recvUser === userId
   const isParty = isRecv || (payUser !== null && payUser === userId)
   const manage = data.isOwner || p.created_by === userId || isParty

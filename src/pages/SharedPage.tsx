@@ -6,6 +6,7 @@ import { downloadBlob } from '../lib/exporters'
 import { fmtMoney } from '../lib/money'
 import { fmtDate, friendly, slug, todayStr } from '../lib/format'
 import { Spinner, ToastProvider, useToast } from '../components/ui'
+import SharedGroupView from './SharedGroupView'
 
 type State = { s: 'loading' } | { s: 'invalid' } | { s: 'error'; msg: string } | { s: 'ok'; trip: SharedTrip; at: Date }
 
@@ -63,6 +64,7 @@ function Inner() {
       <button className="btn block" onClick={load}>Try again</button>
     </div>
   )
+  if (state.trip.scope === 'group') return <SharedGroupView trip={state.trip} token={token} at={state.at} stale={stale} onRefresh={load} />
   if (!view?.model) return <div className="auth"><h1>Nothing to show</h1><p className="muted">This link doesn’t point to anyone in the group any more. Ask the organizer for a new one.</p></div>
 
   const m = view.model

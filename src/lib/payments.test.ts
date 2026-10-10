@@ -7,7 +7,7 @@ const T = (id: string, name: string, user_id: string | null): Traveler => ({ id,
 const travelers = [T('ann', 'Ann', 'uA'), T('bo', 'Bo', 'uB'), T('jo', 'Jordan', null), T('kim', 'Kim', null)]
 const data = (isOwner = false): GroupData => ({
   group: { id: 'g', name: 'Trip', currency: 'CAD', invite_code: '', created_by: null, created_at: '' },
-  members: [{ user_id: 'uA', role: 'owner', joined_at: '', display_name: 'Ann' }, { user_id: 'uB', role: 'member', joined_at: '', display_name: 'Bo' }, { user_id: 'uC', role: 'member', joined_at: '', display_name: 'Cy' }],
+  members: [{ user_id: 'uA', role: 'owner', joined_at: '', display_name: 'Ann' }, { user_id: 'uB', role: 'editor', joined_at: '', display_name: 'Bo' }, { user_id: 'uC', role: 'editor', joined_at: '', display_name: 'Cy' }],
   travelers, expenses: [], payments: [], rates: {}, me: null, isOwner,
 })
 const P = (o: Partial<Payment>): Payment => ({ id: 'p', group_id: 'g', from_id: 'jo', to_id: 'ann', amount: 50, paid_on: '2026-09-20', status: 'pending', created_by: 'uB', ...o })

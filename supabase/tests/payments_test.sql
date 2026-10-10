@@ -30,6 +30,10 @@ select id as tb from public.travelers where group_id=:'g1' and user_id='cccccccc
 select set_config('request.jwt.claim.sub','cccccccc-0000-0000-0000-000000000003',false);
 select public.join_group(:'inv1', null, 'Dee') \gset
 select id as td from public.travelers where group_id=:'g1' and user_id='cccccccc-0000-0000-0000-000000000003' \gset
+-- Joiners start as viewers; Ann lets Bo and Dee add things (as the real app does).
+select set_config('request.jwt.claim.sub','cccccccc-0000-0000-0000-000000000001',false);
+select public.set_member_role(:'g1','cccccccc-0000-0000-0000-000000000002','editor');
+select public.set_member_role(:'g1','cccccccc-0000-0000-0000-000000000003','editor');
 
 -- ===== the table itself is closed to clients =====
 select set_config('request.jwt.claim.sub','cccccccc-0000-0000-0000-000000000002',false);
@@ -148,12 +152,13 @@ select gen_random_uuid() as e1 \gset
 select public.save_expense(:'e1', :'g1', format('{"spent_on":"2026-09-12","vendor":"Hotel","amount":100,"currency":"CAD","payer_id":"%s","split_mode":"equal"}', :'ta')::jsonb,
   format('[{"traveler_id":"%s","value":1},{"traveler_id":"%s","value":1}]', :'ta', :'tb')::jsonb) \gset
 select t.ok((select created_by from public.expenses where id=:'e1') = 'cccccccc-0000-0000-0000-000000000002' and (select updated_by is null from public.expenses where id=:'e1'), 'an expense records who added it');
-select set_config('request.jwt.claim.sub','cccccccc-0000-0000-0000-000000000003',false);
+select set_config('request.jwt.claim.sub','cccccccc-0000-0000-0000-000000000001',false);  -- the owner may fix anyone's expense
 select public.save_expense(:'e1', :'g1', format('{"spent_on":"2026-09-12","vendor":"Hotel (fixed)","amount":120,"currency":"CAD","payer_id":"%s","split_mode":"equal"}', :'ta')::jsonb,
   format('[{"traveler_id":"%s","value":1},{"traveler_id":"%s","value":1}]', :'ta', :'tb')::jsonb) \gset
-select t.ok((select created_by||'|'||updated_by from public.expenses where id=:'e1') = 'cccccccc-0000-0000-0000-000000000002|cccccccc-0000-0000-0000-000000000003', 'it also records who last edited it and keeps the original author');
+select t.ok((select created_by||'|'||updated_by from public.expenses where id=:'e1') = 'cccccccc-0000-0000-0000-000000000002|cccccccc-0000-0000-0000-000000000001', 'it also records who last edited it and keeps the original author');
 update public.expenses set created_by = 'cccccccc-0000-0000-0000-000000000003' where id=:'e1';
 select t.ok((select created_by from public.expenses where id=:'e1') = 'cccccccc-0000-0000-0000-000000000002', 'clients cannot rewrite the author');
+select set_config('request.jwt.claim.sub','cccccccc-0000-0000-0000-000000000003',false);
 select gen_random_uuid() as e2 \gset
 insert into public.expenses (id, group_id, spent_on, amount, currency, payer_id, split_mode, created_by) values (:'e2', :'g1', '2026-09-13', 5, 'CAD', :'ta', 'equal', 'cccccccc-0000-0000-0000-000000000001');
 select t.ok((select created_by from public.expenses where id=:'e2') = 'cccccccc-0000-0000-0000-000000000003', 'a forged author on insert is replaced by the real one');

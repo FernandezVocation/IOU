@@ -7,6 +7,7 @@ import { friendly, fmtDate } from '../lib/format'
 import { paymentHistory, paymentPerms, statusLabel } from '../lib/payments'
 import type { GroupData, Payment } from '../lib/types'
 import { useAuth } from '../lib/auth'
+import { canEditGroup } from '../lib/access'
 import { ConfirmDialog, Sheet, useToast } from '../components/ui'
 import PaymentSheet from '../components/PaymentSheet'
 import { useGroup, verbOwe, who } from './GroupShell'
@@ -82,7 +83,8 @@ export default function BalancesTab() {
   }
 
   const Tag = ({ s }: { s: Pair['status'] }) => <span className={'tag ' + s}>{PAIR_TAG[s]}</span>
-  const PayBtn = ({ from, to }: { from: string; to: string }) => (
+  const editable = canEditGroup(data)
+  const PayBtn = ({ from, to }: { from: string; to: string }) => !editable ? null : (
     <div className="pay"><button className="btn small" onClick={() => setSheet({ from, to })}>Record payment</button></div>
   )
   const Lines = ({ p }: { p: Pair }) => (
@@ -192,7 +194,7 @@ export default function BalancesTab() {
       <div className="sect">
         <div className="prow" style={{ justifyContent: 'space-between', margin: 0 }}>
           <h2>Payments</h2>
-          <button className="btn small primary" onClick={() => setSheet({})}>Record a payment</button>
+          {editable && <button className="btn small primary" onClick={() => setSheet({})}>Record a payment</button>}
         </div>
         {!sorted.length && <div className="empty"><b>No payments yet</b>When someone pays someone back, record it here.</div>}
         {sorted.map(p => {

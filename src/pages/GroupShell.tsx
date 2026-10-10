@@ -4,6 +4,7 @@ import { useAuth } from '../lib/auth'
 import { useGroupData } from '../lib/useGroupData'
 import type { GroupData } from '../lib/types'
 import { Spinner } from '../components/ui'
+import { canEditGroup } from '../lib/access'
 
 interface GroupCtx { data: GroupData; reload: () => Promise<void> }
 const Ctx = createContext<GroupCtx | null>(null)
@@ -54,6 +55,7 @@ export function TabsShell() {
   const { data } = useGroup()
   const base = '/g/' + data.group.id
   const hasPeople = data.travelers.length > 0
+  const canEdit = canEditGroup(data)
   return (
     <>
       <div className="app">
@@ -64,9 +66,10 @@ export function TabsShell() {
             <div className="sub">Balances in {data.group.currency} · {data.travelers.length} {data.travelers.length === 1 ? 'person' : 'people'}</div>
           </div>
         </div>
+        {!canEdit && <div className="notice" role="status">You have view-only access. Ask the group owner if you need to add expenses.</div>}
         <Outlet />
       </div>
-      <Link className={'fab' + (hasPeople ? '' : ' off')} to={base + '/expense/new'} aria-label="Add expense">{icon.plus}</Link>
+      {canEdit && <Link className={'fab' + (hasPeople ? '' : ' off')} to={base + '/expense/new'} aria-label="Add expense">{icon.plus}</Link>}
       <nav className="tabs" aria-label="Sections">
         <div className="in">
           <NavLink to={base} end>{icon.list}<span>Expenses</span></NavLink>

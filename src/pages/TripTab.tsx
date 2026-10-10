@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { COMMON_CURRENCIES, friendly } from '../lib/format'
 import { isValidCurrency, parseNum } from '../lib/money'
 import { useAuth } from '../lib/auth'
+import { canEditGroup, roleLabel } from '../lib/access'
 import { Avatar, ConfirmDialog, useArm, useToast } from '../components/ui'
 import BalanceLinks from '../components/BalanceLinks'
 import KindPicker from '../components/KindPicker'
@@ -80,7 +81,7 @@ export default function TripTab() {
     <>
       <div className="sect" style={{ marginTop: 8 }}>
         <h2>Invite people</h2>
-        <div className="muted small">Anyone with this link can join after signing in. They can add and edit expenses. People who only appear in splits do not need to join.</div>
+        <div className="muted small">Anyone with this link can join after signing in, as a <b>viewer</b>: they can see everything but change nothing. Under “Members with accounts” you choose who can add expenses. People who only appear in splits do not need to join, and people without an account can get a read-only link below.</div>
         <div className="panel">
           <div className="code">{link}</div>
           <div className="row2" style={{ marginTop: 10 }}>
@@ -98,7 +99,7 @@ export default function TripTab() {
         </div>
       </div>
 
-      <BalanceLinks />
+      {data.isOwner && <BalanceLinks />}
 
       <div className="sect">
         <h2>People</h2>
@@ -115,10 +116,10 @@ export default function TripTab() {
             </div>
           )
         })}
-        <div className="prow">
+        {canEditGroup(data) && <div className="prow">
           <input type="text" value={newPerson} onChange={e => setNewPerson(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addPerson() }} placeholder="Add a person" maxLength={40} aria-label="New traveler name" />
           <button className="btn primary" onClick={addPerson}>Add</button>
-        </div>
+        </div>}
         <div className="muted small">A person who is on an expense or payment can’t be removed.</div>
       </div>
 
@@ -177,7 +178,13 @@ export default function TripTab() {
           const isMe = m.user_id === user?.id
           return (
             <div className="prow" key={m.user_id} style={{ justifyContent: 'space-between' }}>
-              <span>{m.display_name || 'Member'}{isMe && ' (you)'} <span className="muted small">{m.role === 'owner' ? 'owner' : ''}</span></span>
+              <span>{m.display_name || 'Member'}{isMe && ' (you)'} {(m.role === 'owner' || !data.isOwner) && <span className="muted small">{roleLabel(m.role)}</span>}</span>
+              {data.isOwner && m.role !== 'owner' && (
+                <select aria-label={`Access for ${m.display_name || 'member'}`} value={m.role} onChange={e => run(supabase.rpc('set_member_role', { p_group: g.id, p_user: m.user_id, p_role: e.target.value }), 'Access updated.')} style={{ width: 'auto' }}>
+                  <option value="viewer">View only</option>
+                  <option value="editor">Can add expenses</option>
+                </select>
+              )}
               {data.isOwner && !isMe && <button className={'btn small danger' + (arm.is(k) ? ' armed' : '')} onClick={() => arm.is(k) ? removeMember(m.user_id) : arm.arm(k)}>{arm.is(k) ? 'Confirm' : 'Remove'}</button>}
             </div>
           )

@@ -80,7 +80,7 @@ select t.fails($$select * from storage.objects$$, 'anon cannot read storage obje
 select public.get_shared_trip(:'tok1') as j \gset
 select t.ok(:'j'::jsonb is not null, 'valid token returns the trip');
 select t.ok((:'j'::jsonb -> 'group' ->> 'name') = 'Lisbon' and (:'j'::jsonb -> 'group' ->> 'currency') = 'CAD', 'shows trip name and currency');
-select t.ok(jsonb_array_length(:'j'::jsonb -> 'expenses') = 2 and jsonb_array_length(:'j'::jsonb -> 'travelers') = 3 and jsonb_array_length(:'j'::jsonb -> 'payments') = 1, 'returns exactly this trip''s expenses, travelers and payments');
+select t.ok(jsonb_array_length(:'j'::jsonb -> 'expenses') = 2 and jsonb_array_length(:'j'::jsonb -> 'travelers') = 2 and jsonb_array_length(:'j'::jsonb -> 'payments') = 0, 'a person link returns only that person''s expenses and the people they deal with (not Cy, not the Cy->Ann payment)');
 select t.ok((:'j'::jsonb -> 'linked' ->> 0)::uuid = :'tb'::uuid and jsonb_array_length(:'j'::jsonb -> 'linked') = 1, 'says which traveler the link is for');
 select t.ok((:'j'::jsonb -> 'rates' ->> 'EUR')::numeric = 1.5, 'includes estimate rates');
 select t.ok(position('SECRET-NOTE-DO-NOT-LEAK' in :'j') = 0, 'private notes are never returned');

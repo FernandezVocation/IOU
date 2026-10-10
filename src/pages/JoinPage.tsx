@@ -50,6 +50,7 @@ export default function JoinPage() {
       <div className="panel">
         <h2>Who are you in this group?</h2>
         <div className="muted small">If the group already added your name, pick it so your expenses line up.</div>
+        <div className="notice" style={{ marginTop: 8 }}>You’ll join with view-only access. The group owner can let you add expenses.</div>
         {pv.travelers.map(t => (
           <label className="radio" key={t.id}><input type="radio" name="who" checked={choice === t.id} onChange={() => setChoice(t.id)} />{t.name}</label>
         ))}

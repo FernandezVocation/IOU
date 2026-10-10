@@ -8,6 +8,7 @@ import { Avatar, ConfirmDialog, useToast } from '../components/ui'
 import CategoryPicker from '../components/CategoryPicker'
 import { useAuth } from '../lib/auth'
 import { userName } from '../lib/payments'
+import { canEditGroup, canModifyExpense } from '../lib/access'
 import { useGroup } from './GroupShell'
 
 interface NewFile { blob: Blob; type: string; name: string; preview: string }
@@ -106,7 +107,8 @@ export default function ExpenseEditor() {
   if (!form) return null
   const f = form
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm(p => (p ? { ...p, [k]: v } : p))
-  const dis = saving
+  const readOnly = existing ? !canModifyExpense(data, existing, user?.id ?? '') : !canEditGroup(data)
+  const dis = saving || readOnly
 
   function validity(): { ok: boolean; msg: string } {
     if (!ids.length) return { ok: false, msg: 'Pick at least one person.' }
@@ -210,8 +212,10 @@ export default function ExpenseEditor() {
         <header>
           <Link className="btn small" to={back}>Cancel</Link>
           <h2>{existing ? 'Expense' : 'New expense'}</h2>
-          <button className="btn small primary" onClick={save} disabled={dis}>{saving ? 'Saving…' : 'Save'}</button>
+          {readOnly ? <span className="tag">View only</span> : <button className="btn small primary" onClick={save} disabled={dis}>{saving ? 'Saving…' : 'Save'}</button>}
         </header>
+        {readOnly && <div className="notice" role="status">{existing && canEditGroup(data) ? 'You can only change expenses you added. Ask the owner, or the person who added this one, to change it.' : 'You have view-only access. Ask the group owner if you need to add expenses.'}</div>}
+        <fieldset disabled={readOnly} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
 
         <div className="amtrow" style={{ marginTop: 6 }}>
           <div>
@@ -325,11 +329,12 @@ export default function ExpenseEditor() {
             {existing.updated_by && existing.updated_at !== existing.created_at && <div>Last edited by {userName(data, existing.updated_by, user?.id ?? null)} on {new Date(existing.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</div>}
           </div>
         )}
-        {existing && (
+        {existing && !readOnly && (
           <div style={{ marginTop: 18 }}>
             <button className="btn danger block" onClick={() => setConfirmDel(true)} disabled={dis}>Delete expense</button>
           </div>
         )}
+        </fieldset>
       </div>
       {confirmDel && existing && (
         <ConfirmDialog title="Delete this expense?" busy={saving} onCancel={() => setConfirmDel(false)} onConfirm={remove}>
