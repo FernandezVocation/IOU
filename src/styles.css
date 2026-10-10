@@ -201,7 +201,9 @@ details.pair.me summary{font-weight:700}
 .sw[aria-checked=true]{outline:3px solid var(--accent);outline-offset:1px}
 .sw.co{border-color:transparent}
 .glist .panel a{display:flex;align-items:center;gap:12px}
-.glist .panel a .gtxt{display:flex;flex-direction:column;min-width:0}
+.glist .panel a .gname{flex:1;min-width:0}
+.glist .panel a .grt{display:flex;flex-direction:column;align-items:flex-end;flex:none;text-align:right;line-height:1.25}
+.glist .panel a .grt b{font-size:14px;font-weight:600}
 .top .gh{display:flex;align-items:center;gap:12px}
 .chip .gicon{vertical-align:-4px}
 .gline{display:inline-flex;align-items:center;gap:7px}

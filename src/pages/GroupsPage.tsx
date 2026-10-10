@@ -58,10 +58,8 @@ export default function GroupsPage() {
           <div className="panel" key={g.id}>
             <Link to={'/g/' + g.id}>
               <GroupIcon group={g} size={44} />
-              <span className="gtxt">
-                <span className="nm">{g.name}</span>
-                <span className="muted small"><span className="kind">{g.kind || 'Trip'}</span> {g.currency}</span>
-              </span>
+              <span className="nm gname">{g.name}</span>
+              <span className="grt"><b>{g.currency}</b><span className="muted small">{g.kind || 'Trip'}</span></span>
             </Link>
           </div>
         ))}
