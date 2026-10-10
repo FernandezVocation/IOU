@@ -36,8 +36,8 @@ const exp = (created_by: string): Expense => ({
 })
 const members = [
   { user_id: 'u1', role: 'owner' as const, joined_at: '', display_name: 'Alex' },
-  { user_id: 'u2', role: 'viewer' as const, joined_at: '', display_name: 'Vic' },
-  { user_id: 'u3', role: 'editor' as const, joined_at: '', display_name: 'Ed' },
+  { user_id: 'u2', role: 'member' as const, joined_at: '', display_name: 'Mia' },
+  { user_id: 'u3', role: 'admin' as const, joined_at: '', display_name: 'Cora' },
 ]
 const data = (o: Partial<GroupData>): GroupData => ({
   group: { id: 'g', name: 'Italy', currency: 'CAD', invite_code: 'abc', created_by: 'u1', created_at: '' },
@@ -50,59 +50,58 @@ const editor = (d: GroupData) => withCtx(d, <Routes><Route path="/g/:id/expense/
 beforeEach(() => { rpc.mockClear(); receiptSession.ok = true }); afterEach(cleanup)
 
 describe('who can change an expense', () => {
-  it('the owner can save and delete anyone’s expense', async () => {
+  it('an owner or co-admin can save and delete anyone’s expense', async () => {
     editor(data({ isOwner: true, expenses: [exp('someone-else')] }))
     expect(await screen.findByText('Save')).toBeTruthy(); expect(screen.getByText('Delete expense')).toBeTruthy()
   })
-  it('an editor can change one they added', async () => {
+  it('a member can change one they added', async () => {
     editor(data({ expenses: [exp('u1')] }))
     expect(await screen.findByText('Save')).toBeTruthy(); expect(screen.getByText('Delete expense')).toBeTruthy()
   })
-  it('an editor sees someone else’s expense as read-only, with a reason', async () => {
+  it('a member sees someone else’s expense as read-only, with a reason', async () => {
     editor(data({ expenses: [exp('u3')] }))
     expect(await screen.findByText('View only')).toBeTruthy()
     expect(screen.queryByText('Save')).toBeNull(); expect(screen.queryByText('Delete expense')).toBeNull()
     expect(screen.getByText(/only change expenses you added/)).toBeTruthy()
     expect((document.querySelector('fieldset') as HTMLFieldSetElement).disabled).toBe(true)
   })
-  it('a viewer cannot save or delete anything, and cannot start a new expense', async () => {
-    editor(data({ canEdit: false }))
-    expect(await screen.findByText('View only')).toBeTruthy()
-    expect(screen.queryByText('Save')).toBeNull(); expect(screen.queryByText('Delete expense')).toBeNull()
-    expect(screen.getByText(/view-only access/)).toBeTruthy()
-  })
 })
 
-describe('what a viewer sees in the group', () => {
+describe('what a member sees in the group', () => {
   const shell = (d: GroupData) => withCtx(d, <Routes><Route path="/" element={<TabsShell />}><Route index element={<div>list</div>} /></Route></Routes>)
-  it('has no add-expense button, and is told why', () => {
-    shell(data({ canEdit: false }))
-    expect(screen.queryByLabelText('Add expense')).toBeNull(); expect(screen.getByText(/view-only access/)).toBeTruthy()
-  })
-  it('an editor has the add button and no warning', () => {
+  it('has the add-expense button and no warning', () => {
     shell(data({}))
     expect(screen.getByLabelText('Add expense')).toBeTruthy(); expect(screen.queryByText(/view-only access/)).toBeNull()
   })
-  it('cannot record payments from the Balances tab', () => {
-    const d = data({ canEdit: false, travelers: [trav('a', 'Ann', 'u1'), trav('b', 'Bo', 'u9')] })
-    withCtx(d, <BalancesTab />)
-    expect(screen.queryByText('Record a payment')).toBeNull()
+  it('can record payments from the Balances tab', () => {
+    withCtx(data({ travelers: [trav('a', 'Ann', 'u1'), trav('b', 'Bo', 'u9')] }), <BalancesTab />)
+    expect(screen.getByText('Record a payment')).toBeTruthy()
   })
 })
 
-describe('the owner’s controls', () => {
-  it('can make a member an editor, or back to view-only', async () => {
-    withCtx(data({ isOwner: true, canEdit: true }), <TripTab />)
-    const sel = await screen.findByLabelText('Access for Vic') as HTMLSelectElement
-    expect(sel.value).toBe('viewer')
-    fireEvent.change(sel, { target: { value: 'editor' } })
-    await waitFor(() => expect(rpc).toHaveBeenCalledWith('set_member_role', { p_group: 'g', p_user: 'u2', p_role: 'editor' }))
+describe('the admin’s controls', () => {
+  it('can make a member a co-admin, or back to member', async () => {
+    withCtx(data({ isOwner: true, isPrimaryOwner: true }), <TripTab />)
+    const sel = await screen.findByLabelText('Access for Mia') as HTMLSelectElement
+    expect(sel.value).toBe('member')
+    expect(Array.from(sel.options).map(o => o.text)).toEqual(['Member', 'Co-admin'])
+    fireEvent.change(sel, { target: { value: 'admin' } })
+    await waitFor(() => expect(rpc).toHaveBeenCalledWith('set_member_role', { p_group: 'g', p_user: 'u2', p_role: 'admin' }))
     expect(screen.queryByLabelText('Access for Alex')).toBeNull()   // the owner's own access is not editable
   })
-  it('non-owners see roles but no controls, and no link maker', () => {
+  it('a co-admin manages people but cannot delete the group or remove the owner', () => {
+    withCtx(data({ isOwner: true, isPrimaryOwner: false }), <TripTab />)
+    expect(screen.getByLabelText('Access for Mia')).toBeTruthy()
+    expect(screen.queryByText('Delete group')).toBeNull(); expect(screen.getByText('Leave group')).toBeTruthy()
+  })
+  it('only the original owner can delete the group', () => {
+    withCtx(data({ isOwner: true, isPrimaryOwner: true }), <TripTab />)
+    expect(screen.getByText('Delete group')).toBeTruthy()
+  })
+  it('members see levels but no controls, and no link maker', () => {
     withCtx(data({ isOwner: false }), <TripTab />)
-    expect(screen.queryByLabelText('Access for Vic')).toBeNull()
-    expect(screen.getByText('View only')).toBeTruthy()
+    expect(screen.queryByLabelText('Access for Mia')).toBeNull()
+    expect(screen.getByText('Co-admin')).toBeTruthy()
     expect(screen.queryByText('Read-only links')).toBeNull()
   })
   it('creates a link for the entire group', async () => {
@@ -128,7 +127,7 @@ describe('the read-only page for a whole-group link', () => {
     travelers: ['Steve', 'ShirleyFerrao', 'Lavi'].map((n, i) => ({ id: 't' + i, name: n, color: '#2B44FF' })),
     expenses: [
       { id: 'v', spent_on: '2026-10-09', spent_at: null, vendor: 'Vatican', location: '', category: 'Attractions', subcategory: 'Museum', amount: 300, currency: 'CAD', settled_amount: null, payer_id: 't1', split_mode: 'equal',
-        splits: [{ traveler_id: 't0', value: 1 }, { traveler_id: 't1', value: 1 }, { traveler_id: 't2', value: 1 }], receipts: [{ id: 'r1', path: 'g/v/r.jpg', name: 'r.jpg', mime: 'image/jpeg' }] },
+        notes: 'Timed entry at 10am', splits: [{ traveler_id: 't0', value: 1 }, { traveler_id: 't1', value: 1 }, { traveler_id: 't2', value: 1 }], receipts: [{ id: 'r1', path: 'g/v/r.jpg', name: 'r.jpg', mime: 'image/jpeg' }] },
     ],
     payments: [], rates: {}, generated_at: '',
   }
@@ -145,6 +144,10 @@ describe('the read-only page for a whole-group link', () => {
   it('lists each person’s share of an expense when it is opened', async () => {
     mount(); fireEvent.click(await screen.findByText('Vatican'))
     expect(screen.getByText('Steve’s share')).toBeTruthy(); expect(screen.getAllByText('CAD 100.00').length).toBeGreaterThan(0)
+  })
+  it('shows the expense note when an expense is opened', async () => {
+    mount(); fireEvent.click(await screen.findByText('Vatican'))
+    expect(screen.getByText('Timed entry at 10am')).toBeTruthy()
   })
   it('shows who owes whom, itemized or fewest', async () => {
     mount(); await screen.findByText('Vatican'); fireEvent.click(screen.getByText('Balances', { selector: 'button' }))
@@ -164,5 +167,6 @@ describe('the read-only page for a whole-group link', () => {
   it('a person link still opens the personal balance page', async () => {
     rpc.mockResolvedValue({ data: { ...trip, scope: 'person', linked: ['t2'], expenses: trip.expenses.map(e => ({ ...e, receipts: undefined })) }, error: null })
     mount(); expect(await screen.findByText('YOU OWE')).toBeTruthy()
+    expect(screen.getByText('Timed entry at 10am')).toBeTruthy()   // a person link shows notes on that person’s own expenses
   })
 })

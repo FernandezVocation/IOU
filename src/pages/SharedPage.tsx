@@ -83,6 +83,7 @@ function Inner() {
       <span>
         {l.vendor}{l.estimated && <> <span className="tag">est.</span></>}
         <br /><span className="muted small">{fmtDate(l.date)} · paid by {l.payerName}{l.original ? ` · ${l.original}` : ''}{plain ? '' : ` · ${l.basis}`}</span>
+        {l.notes && <><br /><span className="small" style={{ fontStyle: 'italic' }}>{l.notes}</span></>}
       </span>
       <span className="a">{fmtMoney(amount, cur)}</span>
     </div>

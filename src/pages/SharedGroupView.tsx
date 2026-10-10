@@ -96,6 +96,7 @@ export default function SharedGroupView({ trip, token, at, stale, onRefresh }: {
                     <div className="why">
                       {e.currency !== cur && c?.minor != null && <div className="muted small">{fmtMoney(c.minor, cur)}{c.status === 'estimated' ? ' (estimated)' : ''}</div>}
                       {e.location && <div className="muted small">{e.location}</div>}
+                      {e.notes && <div className="small" style={{ fontStyle: 'italic', margin: '4px 0' }}>{e.notes}</div>}
                       {shares.map(x => <div className="ln" key={x.t.id}><span>{x.t.name}’s share</span><span className="a">{fmtMoney(x.share, cur)}</span></div>)}
                       {e.receipts.length > 0 && <Thumbs e={e} />}
                     </div>

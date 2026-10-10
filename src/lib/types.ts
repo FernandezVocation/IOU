@@ -12,8 +12,8 @@ export interface Group {
 }
 export interface Member {
   user_id: string
-  /** owner: everything. editor: adds expenses, changes only their own. viewer: read-only. */
-  role: 'owner' | 'editor' | 'viewer'
+  /** owner: the original admin. admin: a co-admin who can change anything except the owner. member: adds expenses, changes only their own. */
+  role: 'owner' | 'admin' | 'member'
   joined_at: string
   display_name: string
 }
@@ -86,7 +86,10 @@ export interface GroupData {
   payments: Payment[]
   rates: Record<string, number>
   me: Traveler | null
+  /** Owner or co-admin: can change anything, manage people and links. */
   isOwner: boolean
-  /** Owner or editor. Missing (old data, tests) means yes; only a read-only view sets it to false. */
+  /** The original owner only (deletes the group). Missing means the same as isOwner. */
+  isPrimaryOwner?: boolean
+  /** Member of the group. Only a read-only link page sets this to false.  Owner or co-admin or member. Missing (old data, tests) means yes; only a read-only view sets it to false. */
   canEdit?: boolean
 }

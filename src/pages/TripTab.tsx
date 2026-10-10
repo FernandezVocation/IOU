@@ -81,7 +81,7 @@ export default function TripTab() {
     <>
       <div className="sect" style={{ marginTop: 8 }}>
         <h2>Invite people</h2>
-        <div className="muted small">Anyone with this link can join after signing in, as a <b>viewer</b>: they can see everything but change nothing. Under “Members with accounts” you choose who can add expenses. People who only appear in splits do not need to join, and people without an account can get a read-only link below.</div>
+        <div className="muted small">Anyone with this link can join after signing in, as a <b>member</b>: they can see everything, add expenses, and change the ones they added. Under “Members with accounts” you can make someone a co-admin, who can change anything. People who only appear in splits do not need to join, and anyone without an account can get a read-only link below.</div>
         <div className="panel">
           <div className="code">{link}</div>
           <div className="row2" style={{ marginTop: 10 }}>
@@ -181,18 +181,18 @@ export default function TripTab() {
               <span>{m.display_name || 'Member'}{isMe && ' (you)'} {(m.role === 'owner' || !data.isOwner) && <span className="muted small">{roleLabel(m.role)}</span>}</span>
               {data.isOwner && m.role !== 'owner' && (
                 <select aria-label={`Access for ${m.display_name || 'member'}`} value={m.role} onChange={e => run(supabase.rpc('set_member_role', { p_group: g.id, p_user: m.user_id, p_role: e.target.value }), 'Access updated.')} style={{ width: 'auto' }}>
-                  <option value="viewer">View only</option>
-                  <option value="editor">Can add expenses</option>
+                  <option value="member">Member</option>
+                  <option value="admin">Co-admin</option>
                 </select>
               )}
-              {data.isOwner && !isMe && <button className={'btn small danger' + (arm.is(k) ? ' armed' : '')} onClick={() => arm.is(k) ? removeMember(m.user_id) : arm.arm(k)}>{arm.is(k) ? 'Confirm' : 'Remove'}</button>}
+              {data.isOwner && !isMe && m.role !== 'owner' && <button className={'btn small danger' + (arm.is(k) ? ' armed' : '')} onClick={() => arm.is(k) ? removeMember(m.user_id) : arm.arm(k)}>{arm.is(k) ? 'Confirm' : 'Remove'}</button>}
             </div>
           )
         })}
       </div>
 
       <div className="sect">
-        {data.isOwner ? (
+        {(data.isPrimaryOwner ?? data.isOwner) ? (
           <button className="btn danger block" onClick={() => setConfirmGroup(true)}>Delete group</button>
         ) : (
           <button className={'btn danger block' + (arm.is('leave') ? ' armed' : '')} onClick={() => arm.is('leave') ? leave() : arm.arm('leave')}>{arm.is('leave') ? 'Tap again to leave' : 'Leave group'}</button>

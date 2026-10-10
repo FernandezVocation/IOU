@@ -63,7 +63,7 @@ export default function BalanceLinks() {
   return (
     <div className="sect">
       <h2>Read-only links</h2>
-      <div className="muted small">Share a view of this group with anyone, even without an account. They can look but never change anything, and they never see notes. Anyone who gets a link can open it, so send it only to the people it’s for. You can turn a link off at any time.</div>
+      <div className="muted small">Share a view of this group with anyone, even without an account. They can look but never change anything. Anyone who gets a link can open it, so send it only to the people it’s for. You can turn a link off at any time.</div>
 
       <div className="panel">
         <div className="lbl" style={{ marginTop: 0 }}>What should the link show?</div>
@@ -72,10 +72,10 @@ export default function BalanceLinks() {
           <button aria-pressed={scope === 'group'} onClick={() => setScope('group')}>Entire group</button>
         </div>
         {scope === 'group' ? (
-          <div className="muted small">Everything: every expense and how it was split, balances, payments and receipt photos. Receipts can include card or personal details, so share this one carefully.</div>
+          <div className="muted small">Everything: every expense with its notes and how it was split, balances, payments and receipt photos. Notes and receipts can include personal or card details, so share this one carefully.</div>
         ) : (
           <>
-            <div className="muted small" style={{ marginBottom: 6 }}>Only the expenses each person paid or is part of, with just their own share, who they pay and who owes them. No receipts.</div>
+            <div className="muted small" style={{ marginBottom: 6 }}>Only the expenses each person paid or is part of, with the notes on those expenses, just their own share, who they pay and who owes them. Nothing about anyone else’s expenses, and no receipts.</div>
             {data.travelers.map(t => (
               <label className="radio" key={t.id}>
                 <input type="checkbox" checked={pick.includes(t.id)} onChange={() => toggle(t.id)} />

@@ -35,7 +35,8 @@ export function assembleGroup(a: {
     payments: a.payments.map(mapPayment),
     rates: Object.fromEntries(a.rates.map(x => [x.currency, Number(x.rate)])),
     me: travelers.find(x => x.user_id === a.userId) ?? null,
-    isOwner: members.some(x => x.user_id === a.userId && x.role === 'owner'),
-    canEdit: members.some(x => x.user_id === a.userId && (x.role === 'owner' || x.role === 'editor')),
+    isOwner: members.some(x => x.user_id === a.userId && (x.role === 'owner' || x.role === 'admin')),
+    isPrimaryOwner: members.some(x => x.user_id === a.userId && x.role === 'owner'),
+    canEdit: members.some(x => x.user_id === a.userId),
   }
 }

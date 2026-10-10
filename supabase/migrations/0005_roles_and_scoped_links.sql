@@ -378,3 +378,6 @@ grant execute on function public.can_edit(uuid), public.can_modify_expense(uuid)
 grant execute on function public.join_group(text, uuid, text), public.save_expense(uuid, uuid, jsonb, jsonb) to authenticated;
 revoke all on function public.get_shared_trip(text) from public;
 grant execute on function public.get_shared_trip(text) to anon, authenticated;
+
+-- Make the API pick up the new and changed functions straight away.
+notify pgrst, 'reload schema';

@@ -11,6 +11,8 @@ export interface InvoiceLine {
   date: string
   time: string | null
   vendor: string
+  /** The expense note, shown on the shared page only; never printed on the invoice PDF. */
+  notes?: string
   detail: string            // "Food & drink · Lisbon"
   payerName: string
   original: string | null   // "EUR 64.50" when paid in another currency
@@ -91,7 +93,7 @@ export function buildInvoiceModel(args: { data: GroupData; billTo: string[]; mod
     }
     if (!share && !paid) continue
     const line: InvoiceLine = {
-      expenseId: e.id, date: e.spent_on, time: e.spent_at, vendor: e.vendor || 'Expense',
+      expenseId: e.id, date: e.spent_on, time: e.spent_at, vendor: e.vendor || 'Expense', notes: e.notes || undefined,
       detail: [e.category ? catLabel(e) : '', e.location].filter(Boolean).join(' · '),
       payerName: nm(e.payer_id),
       original: e.currency !== cur ? `${fmtPlain(toMinor(e.amount, e.currency), e.currency)} ${e.currency}` : null,

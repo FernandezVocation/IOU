@@ -27,7 +27,8 @@ A phone-first web app for tracking and splitting expenses on group trips.
    1. `supabase/migrations/0001_init.sql`: tables, security rules, invite/join functions, the private `receipts` storage bucket, realtime.
    2. `supabase/migrations/0002_share_links.sql`: read-only balance links for people without accounts.
    3. `supabase/migrations/0003_payments_and_overview.sql`: payments you can record in part and have the receiver confirm, "who entered / edited it", and the cross-trip Overview. 
-   5. `supabase/migrations/0005_roles_and_scoped_links.sql`: view-only accounts, editors who change only what they added, and read-only links for the whole group or for specific people. **Run it before you deploy the matching app update.** Everyone who is a member today becomes an editor, so nothing changes for existing groups. People who join from now on start as viewers.
+   5. `supabase/migrations/0005_roles_and_scoped_links.sql`: members who change only what they added, and read-only links for the whole group or for specific people.
+   6. `supabase/migrations/0006_simpler_roles_and_link_notes.sql`: co-admins, and notes on read-only links. **Run 0005 and then 0006 before you deploy the matching app update.** Everyone who is a member today stays a member and keeps working as before.
    4. `supabase/migrations/0004_categories_and_group_types.sql`: sub-categories on expenses and a type for each group (Trip, Household, Event, or anything typed). **Run this one before you deploy the matching app update**, because the new app calls it. (If you already ran 0001 to 0003 earlier, run only the new one.)
 3. **Authentication → URL Configuration**
    - *Site URL*: your deployed address (for example `https://trips.example.com`).
@@ -56,7 +57,7 @@ Then update the Supabase *Site URL* / *Redirect URLs* (step 3 above) to the real
 
 ## Host it on Cloudflare (nothing runs on your computer)
 
-1. Finish the Supabase part above (run the five SQL files, copy the Project URL and anon key).
+1. Finish the Supabase part above (run the six SQL files, copy the Project URL and anon key).
 2. Put the project files on GitHub (a new repository; on the web page choose **uploading an existing file** and drag in the *contents* of the unzipped `trip-ledger` folder, so `package.json` and `wrangler.jsonc` are at the top level).
 3. In the Cloudflare dashboard open **Workers & Pages** → **Create application** → **Import a repository**, connect GitHub and pick the repository. Keep the Worker name `iou` (it must match `name` in `wrangler.jsonc`), set **Build command** `npm run build` and leave **Deploy command** as `npx wrangler deploy`.
 4. Add two **build variables** (the build-time ones, not runtime): `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (optionally `NODE_VERSION` = `20`). Deploy. If the first build ran before you added them, add them and retry the build.
@@ -114,12 +115,12 @@ The **Overview** tab (bottom bar on the Trips screen) answers "does Jack owe me 
 
 | | Account? | How they get in | Can |
 |---|---|---|---|
-| Owner | yes | creates the group | everything |
-| Editor | yes | invite link, then the owner picks **Can add expenses** | add expenses and payments; change or delete only the expenses they added |
-| Viewer | yes | invite link (everyone starts here) | read everything, change nothing |
-| Link holder | no | a read-only link from the owner | read only: the **entire group** (receipts included) or **specific people** (only their own expenses and share) |
+| Owner | yes | creates the group | everything, including deleting the group. Nobody can remove or demote the owner |
+| Co-admin | yes | the owner (or another co-admin) sets someone's level | everything the owner can, except delete the group or touch the owner: edit any expense or payment, change people's level, create links, change settings |
+| Member | yes | invite link (everyone starts here) | read everything, add expenses and payments, change or delete only the expenses they added |
+| Link holder | no | a read-only link from an owner or co-admin | read only: the **entire group** (receipts and notes included) or **specific people** (only their own expenses, with the notes on them, and their own share) |
 
-The owner changes someone's access in **More → Group settings → Members with accounts**, and creates or turns off links under **Read-only links**. Only the owner sees the links.
+There is no view-only account. To let someone look without adding anything, send a read-only link. Set someone's level in **More → Group settings → Members with accounts**, and create or turn off links under **Read-only links**. Only owners and co-admins see the links.
 
 **Receipt photos on an entire-group link** need one Supabase setting: **Authentication → Sign In / Providers → Allow anonymous sign-ins** (turn it on). A visitor then gets a throwaway session with no email, which can read that group's receipts only while the link exists. If it is off, the rest of the page works and the Receipts tab says photos can't be shown.
 
@@ -142,10 +143,10 @@ The anon key in the browser is public by design. **Never put the `service_role` 
 ## Tests
 
 ```bash
-npm test        # ledger math, payments, overview, invoices, receipts ZIP, exports, balance links, and the screens, categories, breakdown and themes (170 tests)
+npm test        # ledger math, payments, overview, invoices, receipts ZIP, exports, balance links, and the screens, categories, breakdown and themes (171 tests)
 ```
 
-Database rules are tested against a real Postgres: `rls_test.sql` (52 checks: cross-group reads/writes, invite flow, owner rules, currency lock, storage access) and `payments_test.sql` (70 checks: who may confirm, edit, undo and delete a payment, partial amounts, cross-trip batches that succeed or fail as a whole, private contacts, unforgeable authors) `roles_test.sql` (52 checks: viewers cannot write anything, editors change only their own expenses, the owner changes anything, who may change roles, group links versus person links, other people's amounts are not sent on a person link, receipt access follows the link) and `share_links_test.sql` (48 checks: an anonymous visitor cannot read any table or call any other function, tokens cannot be guessed or crossed between trips, nothing private is returned, expiry and turn-off work). Run the second on a fresh database (rebuild it first), then `SHARED_SHAPE_JSON=/tmp/shared_shape.json npx vitest run src/lib/shared.test.ts` checks that the real database output feeds the app's math. Needs a local Postgres with the Supabase roles stubbed:
+Database rules are tested against a real Postgres: `rls_test.sql` (52 checks: cross-group reads/writes, invite flow, owner rules, currency lock, storage access) and `payments_test.sql` (70 checks: who may confirm, edit, undo and delete a payment, partial amounts, cross-trip batches that succeed or fail as a whole, private contacts, unforgeable authors) `roles_test.sql` (54 checks: members change only their own expenses, co-admins change anything but cannot remove the owner or delete the group, who may change levels, group links versus person links, other people's amounts are not sent on a person link, receipt access follows the link) and `share_links_test.sql` (48 checks: an anonymous visitor cannot read any table or call any other function, tokens cannot be guessed or crossed between trips, nothing private is returned, expiry and turn-off work). Run the second on a fresh database (rebuild it first), then `SHARED_SHAPE_JSON=/tmp/shared_shape.json npx vitest run src/lib/shared.test.ts` checks that the real database output feeds the app's math. Needs a local Postgres with the Supabase roles stubbed:
 
 ```bash
 createdb tl
@@ -155,6 +156,7 @@ psql -d tl -v ON_ERROR_STOP=1 -f supabase/migrations/0002_share_links.sql
 psql -d tl -v ON_ERROR_STOP=1 -f supabase/migrations/0003_payments_and_overview.sql
 psql -d tl -v ON_ERROR_STOP=1 -f supabase/migrations/0004_categories_and_group_types.sql
 psql -d tl -v ON_ERROR_STOP=1 -f supabase/migrations/0005_roles_and_scoped_links.sql
+psql -d tl -v ON_ERROR_STOP=1 -f supabase/migrations/0006_simpler_roles_and_link_notes.sql
 psql -d tl -f supabase/tests/rls_test.sql | grep -E "PASS|FAIL"      # then rebuild the database and run share_links_test.sql, payments_test.sql, categories_test.sql, roles_test.sql the same way
 ```
 
@@ -181,7 +183,8 @@ supabase/migrations/0001_init.sql   schema, RLS, RPCs, storage rules
 supabase/migrations/0002_share_links.sql   balance links for non-account people
 supabase/migrations/0003_payments_and_overview.sql   payments (partial, Sent/Received), authorship, cross-trip contacts
 supabase/migrations/0004_categories_and_group_types.sql   sub-categories, group types
-supabase/migrations/0005_roles_and_scoped_links.sql   roles, edit-own-only, group and person links
+supabase/migrations/0005_roles_and_scoped_links.sql   edit-own-only, group and person links
+supabase/migrations/0006_simpler_roles_and_link_notes.sql   co-admins, notes on links
 supabase/tests/                     database tests + stub
 src/lib/money.ts, ledger.ts         integer-cents math and the balance/"why" engine
 src/lib/exporters.ts                Excel + PDF reports

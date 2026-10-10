@@ -139,7 +139,7 @@ describe('expense entry: settle currency by default, foreign on demand', () => {
   })
 
   it('deleting an expense asks for confirmation first, and Cancel keeps it', async () => {
-    mount('e9', { ...base, expenses: [{ ...foreign, created_by: 'u1', created_at: '2026-09-02T10:00:00Z', updated_by: 'u2', updated_at: '2026-09-03T10:00:00Z' }], members: [{ user_id: 'u1', role: 'owner', joined_at: '', display_name: 'Alex' }, { user_id: 'u2', role: 'editor', joined_at: '', display_name: 'Sam' }] })
+    mount('e9', { ...base, expenses: [{ ...foreign, created_by: 'u1', created_at: '2026-09-02T10:00:00Z', updated_by: 'u2', updated_at: '2026-09-03T10:00:00Z' }], members: [{ user_id: 'u1', role: 'owner', joined_at: '', display_name: 'Alex' }, { user_id: 'u2', role: 'member', joined_at: '', display_name: 'Sam' }] })
     expect(screen.getByText(/Added by You on/)).toBeTruthy()
     expect(screen.getByText(/Last edited by Sam on/)).toBeTruthy()
     fireEvent.click(screen.getByText('Delete expense'))

@@ -14,7 +14,7 @@ import type { Expense, GroupData, Payment } from '../lib/types'
 const trav = (id: string, name: string, user_id: string | null) => ({ id, group_id: 'g', name, color: '#2B44FF', user_id, sort_order: 0 })
 const hotel: Expense = { id: 'e', group_id: 'g', spent_on: '2026-09-12', spent_at: null, vendor: 'Hotel', location: '', category: '', notes: '', amount: 300, currency: 'CAD', settled_amount: null, payer_id: 'alex', split_mode: 'equal', created_at: '', updated_at: '', receipts: [],
   splits: [{ traveler_id: 'alex', value: 1 }, { traveler_id: 'sam', value: 1 }, { traveler_id: 'jo', value: 1 }] }
-const members = [{ user_id: 'u1', role: 'owner' as const, joined_at: '', display_name: 'Alex' }, { user_id: 'u2', role: 'editor' as const, joined_at: '', display_name: 'Sam' }]
+const members = [{ user_id: 'u1', role: 'owner' as const, joined_at: '', display_name: 'Alex' }, { user_id: 'u2', role: 'member' as const, joined_at: '', display_name: 'Sam' }]
 const base = (extra: Partial<GroupData> = {}, userId = 'u1'): GroupData => ({
   group: { id: 'g', name: 'Lisbon', currency: 'CAD', invite_code: '', created_by: 'u1', created_at: '' }, members,
   travelers: [trav('alex', 'Alex', 'u1'), trav('sam', 'Sam', 'u2'), trav('jo', 'Jordan', null)], expenses: [hotel], payments: [], rates: {},

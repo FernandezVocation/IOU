@@ -214,7 +214,7 @@ export default function ExpenseEditor() {
           <h2>{existing ? 'Expense' : 'New expense'}</h2>
           {readOnly ? <span className="tag">View only</span> : <button className="btn small primary" onClick={save} disabled={dis}>{saving ? 'Saving…' : 'Save'}</button>}
         </header>
-        {readOnly && <div className="notice" role="status">{existing && canEditGroup(data) ? 'You can only change expenses you added. Ask the owner, or the person who added this one, to change it.' : 'You have view-only access. Ask the group owner if you need to add expenses.'}</div>}
+        {readOnly && <div className="notice" role="status">{existing && canEditGroup(data) ? 'You can only change expenses you added. Ask a group admin, or the person who added this one, to change it.' : 'You have view-only access. Ask the group owner if you need to add expenses.'}</div>}
         <fieldset disabled={readOnly} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
 
         <div className="amtrow" style={{ marginTop: 6 }}>

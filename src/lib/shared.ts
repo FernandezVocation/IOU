@@ -11,7 +11,7 @@ export interface SharedTrip {
   linked: string[]
   travelers: Array<{ id: string; name: string; color: string }>
   expenses: Array<{
-    id: string; spent_on: string; spent_at: string | null; vendor: string; location: string; category: string; subcategory?: string
+    id: string; spent_on: string; spent_at: string | null; vendor: string; location: string; category: string; subcategory?: string; notes?: string
     amount: number | string; currency: string; settled_amount: number | string | null; payer_id: string
     split_mode: Expense['split_mode']; splits: Array<{ traveler_id: string; value: number | string }>
     /** Only on group links. */
@@ -34,7 +34,7 @@ export function sharedToGroupData(s: SharedTrip): { data: GroupData; linked: str
   const travelers: Traveler[] = s.travelers.map((t, i) => ({ id: t.id, group_id: 'shared', name: t.name, color: t.color, user_id: null, sort_order: i }))
   const ids = new Set(travelers.map(t => t.id))
   const expenses: Expense[] = s.expenses.map(e => ({
-    id: e.id, group_id: 'shared', spent_on: e.spent_on, spent_at: e.spent_at, vendor: e.vendor, location: e.location, category: e.category, subcategory: e.subcategory ?? '', notes: '',
+    id: e.id, group_id: 'shared', spent_on: e.spent_on, spent_at: e.spent_at, vendor: e.vendor, location: e.location, category: e.category, subcategory: e.subcategory ?? '', notes: e.notes ?? '',
     amount: Number(e.amount), currency: e.currency, settled_amount: e.settled_amount == null ? null : Number(e.settled_amount),
     payer_id: e.payer_id, split_mode: e.split_mode, created_at: '', updated_at: '',
     receipts: (e.receipts ?? []).map(r => ({ id: r.id, expense_id: e.id, group_id: 'shared', path: r.path, mime: r.mime, name: r.name, size_bytes: null })),

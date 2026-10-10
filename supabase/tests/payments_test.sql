@@ -32,8 +32,8 @@ select public.join_group(:'inv1', null, 'Dee') \gset
 select id as td from public.travelers where group_id=:'g1' and user_id='cccccccc-0000-0000-0000-000000000003' \gset
 -- Joiners start as viewers; Ann lets Bo and Dee add things (as the real app does).
 select set_config('request.jwt.claim.sub','cccccccc-0000-0000-0000-000000000001',false);
-select public.set_member_role(:'g1','cccccccc-0000-0000-0000-000000000002','editor');
-select public.set_member_role(:'g1','cccccccc-0000-0000-0000-000000000003','editor');
+select public.set_member_role(:'g1','cccccccc-0000-0000-0000-000000000002','member');
+select public.set_member_role(:'g1','cccccccc-0000-0000-0000-000000000003','member');
 
 -- ===== the table itself is closed to clients =====
 select set_config('request.jwt.claim.sub','cccccccc-0000-0000-0000-000000000002',false);

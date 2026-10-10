@@ -1,6 +1,6 @@
 import type { Expense, GroupData } from './types'
 
-/** Owner or editor. Viewers, and read-only link pages, get false. */
+/** Anyone in the group. Only read-only link pages get false. */
 export const canEditGroup = (d: GroupData): boolean => d.canEdit !== false
 
 /**
@@ -13,4 +13,4 @@ export function canModifyExpense(d: GroupData, e: Expense, userId: string): bool
   return d.isOwner || (!!e.created_by && e.created_by === userId)
 }
 
-export const roleLabel = (role: string): string => (role === 'owner' ? 'Owner' : role === 'editor' ? 'Can add expenses' : 'View only')
+export const roleLabel = (role: string): string => (role === 'owner' ? 'Owner' : role === 'admin' ? 'Co-admin' : 'Member')

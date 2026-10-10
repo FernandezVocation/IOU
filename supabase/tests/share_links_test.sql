@@ -28,6 +28,9 @@ select public.save_expense(:'e1', :'g1', format('{"spent_on":"2026-09-12","vendo
 select gen_random_uuid() as e2 \gset
 select public.save_expense(:'e2', :'g1', format('{"spent_on":"2026-09-13","vendor":"Dinner","amount":90,"currency":"CAD","payer_id":"%s","split_mode":"percent"}', :'tb')::jsonb,
   format('[{"traveler_id":"%s","value":50},{"traveler_id":"%s","value":50}]', :'ta', :'tb')::jsonb) \gset
+select gen_random_uuid() as e3 \gset
+select public.save_expense(:'e3', :'g1', format('{"spent_on":"2026-09-14","vendor":"Ann-and-Cy-only","notes":"OTHERS-PRIVATE-NOTE","amount":20,"currency":"CAD","payer_id":"%s","split_mode":"equal"}', :'ta')::jsonb,
+  format('[{"traveler_id":"%s","value":1},{"traveler_id":"%s","value":1}]', :'ta', :'tc')::jsonb) \gset
 insert into public.receipts (expense_id, group_id, path, mime) values (:'e1', :'g1', :'g1' || '/' || :'e1' || '/r.jpg', 'image/jpeg');
 insert into public.group_rates (group_id, currency, rate) values (:'g1', 'EUR', 1.5);
 select public.save_payment(gen_random_uuid(), :'g1', format('{"from_id":"%s","to_id":"%s","amount":25}', :'tc', :'ta')::jsonb) \gset
@@ -83,11 +86,12 @@ select t.ok((:'j'::jsonb -> 'group' ->> 'name') = 'Lisbon' and (:'j'::jsonb -> '
 select t.ok(jsonb_array_length(:'j'::jsonb -> 'expenses') = 2 and jsonb_array_length(:'j'::jsonb -> 'travelers') = 2 and jsonb_array_length(:'j'::jsonb -> 'payments') = 0, 'a person link returns only that person''s expenses and the people they deal with (not Cy, not the Cy->Ann payment)');
 select t.ok((:'j'::jsonb -> 'linked' ->> 0)::uuid = :'tb'::uuid and jsonb_array_length(:'j'::jsonb -> 'linked') = 1, 'says which traveler the link is for');
 select t.ok((:'j'::jsonb -> 'rates' ->> 'EUR')::numeric = 1.5, 'includes estimate rates');
-select t.ok(position('SECRET-NOTE-DO-NOT-LEAK' in :'j') = 0, 'private notes are never returned');
+select t.ok(position('SECRET-NOTE-DO-NOT-LEAK' in :'j') > 0, 'a person link includes the notes on that person''s own expenses');
+select t.ok(position('OTHERS-PRIVATE-NOTE' in :'j') = 0 and position('Ann-and-Cy-only' in :'j') = 0, 'but never the notes (or existence) of expenses the person is not part of');
 select t.ok(position('OTHERVENDOR' in :'j') = 0 and position(:'g2' in :'j') = 0 and position(:'tz' in :'j') = 0, 'nothing from another trip leaks');
 select t.ok(position(:'invite1' in :'j') = 0 and position('invite_code' in :'j') = 0 and position('token' in :'j') = 0, 'invite code and tokens are not returned');
 select t.ok(position('owner@x.test' in :'j') = 0 and position('bbbbbbbb-0000' in :'j') = 0 and position('created_by' in :'j') = 0 and position('receipt' in :'j') = 0 and position('/r.jpg' in :'j') = 0, 'no emails, account ids or receipts');
-select t.ok((select array_agg(k order by k) from jsonb_object_keys(:'j'::jsonb -> 'expenses' -> 0) k) = array['amount','category','currency','id','location','payer_id','settled_amount','spent_at','spent_on','split_mode','splits','subcategory','vendor'], 'expense objects contain only the whitelisted fields');
+select t.ok((select array_agg(k order by k) from jsonb_object_keys(:'j'::jsonb -> 'expenses' -> 0) k) = array['amount','category','currency','id','location','notes','payer_id','settled_amount','spent_at','spent_on','split_mode','splits','subcategory','vendor'], 'expense objects contain only the whitelisted fields');
 select t.ok(public.get_shared_trip(null) is null, 'null token -> null');
 select t.ok(public.get_shared_trip('') is null and public.get_shared_trip('abc') is null and public.get_shared_trip(repeat('z',48)) is null, 'malformed tokens -> null');
 select t.ok(public.get_shared_trip(upper(:'tok1')) is null, 'tokens are case-sensitive');
