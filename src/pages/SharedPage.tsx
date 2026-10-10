@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import GroupIcon from '../components/GroupIcon'
 import { useParams } from 'react-router-dom'
 import { fetchSharedTrip, sharedToGroupData, type SharedTrip } from '../lib/shared'
 import { buildInvoiceModel, buildInvoicePdf, type InvoiceLine } from '../lib/invoice'
@@ -94,7 +95,7 @@ function Inner() {
       <div className="top">
         <div>
           <div className="muted small" style={{ marginBottom: 4 }}>Read-only balance · {state.trip.label}</div>
-          <h1>{m.groupName}</h1>
+          <div className="gh"><GroupIcon group={state.trip.group} size={44} /><h1>{m.groupName}</h1></div>
           <div className="sub">Updated {state.at.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
         </div>
         <button className="btn small" onClick={load}>Refresh</button>

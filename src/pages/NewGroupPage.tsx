@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import GroupLookPicker from '../components/GroupLookPicker'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
@@ -14,6 +15,7 @@ export default function NewGroupPage() {
   const [pick, setPick] = useState('CAD')
   const [other, setOther] = useState('')
   const [me, setMe] = useState(displayName)
+  const [look, setLook] = useState<{ icon: string; color: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -25,6 +27,8 @@ export default function NewGroupPage() {
     const { data, error } = await supabase.rpc('create_group', { p_name: name.trim(), p_currency: currency, p_my_name: me.trim(), p_kind: kind.trim() || 'Trip' })
     setBusy(false)
     if (error) { setError(friendly(error)); return }
+    // The group is created with the default for its type; a pick made here is saved straight after.
+    if (look) await supabase.from('groups').update({ icon: look.icon, color: look.color }).eq('id', data as string)
     nav('/g/' + (data as string), { replace: true })
   }
 
@@ -36,6 +40,8 @@ export default function NewGroupPage() {
         <input id="n" type="text" value={name} onChange={e => setName(e.target.value)} maxLength={80} placeholder="Lisbon, September" required />
         <span className="lbl">What is this group for?</span>
         <KindPicker value={kind} onChange={setKind} />
+        <span className="lbl">Icon and colour</span>
+        <GroupLookPicker kind={kind} icon={look?.icon} color={look?.color} onChange={setLook} />
         <label className="lbl" htmlFor="c">Settle currency</label>
         <select id="c" value={pick} onChange={e => setPick(e.target.value)}>
           {COMMON_CURRENCIES.map(c => <option key={c}>{c}</option>)}

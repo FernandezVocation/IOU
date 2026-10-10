@@ -143,3 +143,20 @@ describe('Italy 2026: two expenses split seven ways', () => {
     expect(Object.values(net).every(v => v === 0)).toBe(true)
   })
 })
+
+describe('a statement amount in the payer’s own card currency', () => {
+  const rates = { EUR: 1.5, QAR: 0.37 }
+  const e = (o: Partial<Expense>): Expense => ({ id: 'x', group_id: 'g', spent_on: '2026-10-01', spent_at: null, vendor: '', location: '', category: '', notes: '', amount: 100, currency: 'EUR', settled_amount: null, payer_id: 'a', split_mode: 'equal', created_at: '', updated_at: '', receipts: [], splits: [], ...o })
+  it('uses an exact settle amount first', () => {
+    expect(expenseInGroupCurrency(e({ settled_amount: 219.4, charged_amount: 600, charged_currency: 'QAR' }), 'CAD', rates)).toEqual({ minor: 21940, status: 'confirmed' })
+  })
+  it('then the statement amount at the group rate, as an estimate', () => {
+    expect(expenseInGroupCurrency(e({ charged_amount: 600, charged_currency: 'QAR' }), 'CAD', rates)).toEqual({ minor: 22200, status: 'estimated' })
+  })
+  it('falls back to the price at the price currency’s rate when the statement currency has no rate', () => {
+    expect(expenseInGroupCurrency(e({ charged_amount: 600, charged_currency: 'QAR' }), 'CAD', { EUR: 1.5 })).toEqual({ minor: 15000, status: 'estimated' })
+  })
+  it('leaves it out when nothing can be converted', () => {
+    expect(expenseInGroupCurrency(e({ charged_amount: 600, charged_currency: 'QAR' }), 'CAD', {})).toEqual({ minor: null, status: 'norate' })
+  })
+})

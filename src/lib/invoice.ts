@@ -3,6 +3,7 @@ import { computeLedger, planTransfers } from './ledger'
 import { fmtPlain, toMinor } from './money'
 import { l1, slug } from './format'
 import { catLabel } from './categories'
+import { groupLook, hexToRgb, tilePng, type Look } from './groupLook'
 
 export type InvoiceMode = 'pending' | 'final'
 
@@ -25,6 +26,8 @@ export interface InvoiceLine {
 export interface PaymentLine { date: string; text: string; amount: number; kind: 'made' | 'received' }
 export interface InvoiceModel {
   groupName: string
+  /** The group's icon and colour, shown in the header. */
+  look?: Look
   currency: string
   reference: string
   generatedOn: string       // YYYY-MM-DD
@@ -155,7 +158,7 @@ export function buildInvoiceModel(args: { data: GroupData; billTo: string[]; mod
   const ymd = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
   const names = data.travelers.filter(t => party.has(t.id)).map(t => t.name)
   return {
-    groupName: data.group.name, currency: cur,
+    groupName: data.group.name, look: groupLook(data.group), currency: cur,
     reference: `${slug(data.group.name).toUpperCase().slice(0, 14)}-${ymd}`,
     generatedOn: `${ymd.slice(0, 4)}-${ymd.slice(4, 6)}-${ymd.slice(6)}`,
     mode, billTo: [...party], billToLabel: joinNames(names), preparedBy: args.preparedBy ?? '', note: (args.note ?? '').trim(),
@@ -190,6 +193,9 @@ export async function buildInvoicePdf(m: InvoiceModel, images: InvoiceImage[] = 
   const when = (l: InvoiceLine) => l.date + (l.time ? '\n' + l.time.slice(0, 5) : '')
 
   // ---- header
+  const look = m.look ?? groupLook({}), tile = await tilePng(look)
+  doc.setFillColor(...hexToRgb(look.color)); doc.rect(0, 0, W, 4, 'F')
+  if (tile) doc.addImage(tile, 'PNG', mg + 56, 14, 11, 11)
   doc.setFont('helvetica', 'bold'); doc.setFontSize(28); doc.setTextColor(...ACCENT); doc.text('INVOICE', mg, 24)
   doc.setFontSize(9); doc.setTextColor(...MUTED); doc.setFont('helvetica', 'normal')
   doc.text('Reference', right, 15, { align: 'right' }); doc.setTextColor(...INK); doc.setFont('helvetica', 'bold'); doc.text(l1(m.reference), right, 20, { align: 'right' })

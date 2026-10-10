@@ -193,3 +193,15 @@ details.pair.me summary{font-weight:700}
 .dv.me{background:color-mix(in srgb,var(--accent) 12%,transparent);border-radius:10px;padding:7px 8px;box-shadow:inset 4px 0 0 var(--accent)}
 .dv.me .nm,.dv.me .am{font-weight:800}
 .day.me{background:color-mix(in srgb,var(--accent) 14%,transparent);border-radius:8px;box-shadow:inset 4px 0 0 var(--accent)}
+.prow select.stmt{width:auto;min-width:78px;flex:none}
+/* Group icon tile and the icon/colour picker */
+.gicon{display:inline-flex;align-items:center;justify-content:center;flex:none}
+.swgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:6px;margin-top:6px}
+.sw{min-height:44px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);display:flex;align-items:center;justify-content:center;padding:0}
+.sw[aria-checked=true]{outline:3px solid var(--accent);outline-offset:1px}
+.sw.co{border-color:transparent}
+.glist .panel a{display:flex;align-items:center;gap:12px}
+.glist .panel a .gtxt{display:flex;flex-direction:column;min-width:0}
+.top .gh{display:flex;align-items:center;gap:12px}
+.chip .gicon{vertical-align:-4px}
+.gline{display:inline-flex;align-items:center;gap:7px}

@@ -6,8 +6,9 @@ import { friendly } from '../lib/format'
 import { Spinner } from '../components/ui'
 import TopNav from '../components/TopNav'
 import ThemeToggle from '../components/ThemeToggle'
+import GroupIcon from '../components/GroupIcon'
 
-interface Row { id: string; name: string; currency: string; kind?: string; created_at: string }
+interface Row { id: string; name: string; currency: string; kind?: string; icon?: string | null; color?: string | null; created_at: string }
 
 export default function GroupsPage() {
   const nav = useNavigate()
@@ -18,7 +19,7 @@ export default function GroupsPage() {
   const [kindFilter, setKindFilter] = useState('All')
 
   useEffect(() => {
-    supabase.from('groups').select('id, name, currency, kind, created_at').order('created_at', { ascending: false })
+    supabase.from('groups').select('id, name, currency, kind, icon, color, created_at').order('created_at', { ascending: false })
       .then(({ data, error }) => { if (error) setError(friendly(error)); else setRows(data as Row[]) })
   }, [])
 
@@ -56,8 +57,11 @@ export default function GroupsPage() {
         {shown?.map(g => (
           <div className="panel" key={g.id}>
             <Link to={'/g/' + g.id}>
-              <span className="nm">{g.name}</span>
-              <span className="muted small"><span className="kind">{g.kind || 'Trip'}</span> {g.currency}</span>
+              <GroupIcon group={g} size={44} />
+              <span className="gtxt">
+                <span className="nm">{g.name}</span>
+                <span className="muted small"><span className="kind">{g.kind || 'Trip'}</span> {g.currency}</span>
+              </span>
             </Link>
           </div>
         ))}

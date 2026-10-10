@@ -8,12 +8,18 @@ export interface Calc { minor: number | null; status: CalcStatus }
  * An expense's value in the group (settle) currency.
  *  - already in the group currency            -> confirmed
  *  - foreign with a settled (statement) amount -> confirmed
+ *  - foreign, statement amount + a rate for its currency -> estimated (the payer's own charge)
  *  - foreign, no settled amount, rate known    -> estimated
  *  - foreign, nothing to go on                 -> norate (left out of balances)
  */
 export function expenseInGroupCurrency(e: Expense, groupCurrency: string, rates: Record<string, number>): Calc {
   if (e.currency === groupCurrency) return { minor: toMinor(e.amount, groupCurrency), status: 'confirmed' }
   if (e.settled_amount != null && e.settled_amount > 0) return { minor: toMinor(e.settled_amount, groupCurrency), status: 'confirmed' }
+  if (e.charged_amount != null && e.charged_amount > 0 && e.charged_currency) {
+    if (e.charged_currency === groupCurrency) return { minor: toMinor(e.charged_amount, groupCurrency), status: 'confirmed' }
+    const cr = rates[e.charged_currency]
+    if (cr > 0) return { minor: Math.round(e.charged_amount * cr * 10 ** currencyDigits(groupCurrency)), status: 'estimated' }
+  }
   const r = rates[e.currency]
   if (r > 0) return { minor: Math.round(e.amount * r * 10 ** currencyDigits(groupCurrency)), status: 'estimated' }
   return { minor: null, status: 'norate' }

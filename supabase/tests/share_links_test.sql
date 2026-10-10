@@ -91,7 +91,7 @@ select t.ok(position('OTHERS-PRIVATE-NOTE' in :'j') = 0 and position('Ann-and-Cy
 select t.ok(position('OTHERVENDOR' in :'j') = 0 and position(:'g2' in :'j') = 0 and position(:'tz' in :'j') = 0, 'nothing from another trip leaks');
 select t.ok(position(:'invite1' in :'j') = 0 and position('invite_code' in :'j') = 0 and position('token' in :'j') = 0, 'invite code and tokens are not returned');
 select t.ok(position('owner@x.test' in :'j') = 0 and position('bbbbbbbb-0000' in :'j') = 0 and position('created_by' in :'j') = 0 and position('receipt' in :'j') = 0 and position('/r.jpg' in :'j') = 0, 'no emails, account ids or receipts');
-select t.ok((select array_agg(k order by k) from jsonb_object_keys(:'j'::jsonb -> 'expenses' -> 0) k) = array['amount','category','currency','id','location','notes','payer_id','settled_amount','spent_at','spent_on','split_mode','splits','subcategory','vendor'], 'expense objects contain only the whitelisted fields');
+select t.ok((select array_agg(k order by k) from jsonb_object_keys(:'j'::jsonb -> 'expenses' -> 0) k) = array['amount','category','charged_amount','charged_currency','currency','id','location','notes','payer_id','settled_amount','spent_at','spent_on','split_mode','splits','subcategory','vendor'], 'expense objects contain only the whitelisted fields');
 select t.ok(public.get_shared_trip(null) is null, 'null token -> null');
 select t.ok(public.get_shared_trip('') is null and public.get_shared_trip('abc') is null and public.get_shared_trip(repeat('z',48)) is null, 'malformed tokens -> null');
 select t.ok(public.get_shared_trip(upper(:'tok1')) is null, 'tokens are case-sensitive');

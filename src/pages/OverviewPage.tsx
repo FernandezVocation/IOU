@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import GroupIcon from '../components/GroupIcon'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { fetchAllGroups, type AllGroups } from '../lib/allGroups'
@@ -42,6 +43,7 @@ export default function OverviewPage() {
   }, [load])
 
   const trips = useMemo(() => (all?.groups ?? []).filter(g => g.me), [all])
+  const lookOf = (id: string) => (all?.groups ?? []).find(x => x.group.id === id)?.group
   const people = useMemo(
     () => (all ? buildOverview({ groups: all.groups, userId: uid, contacts: all.contacts, mappings: all.mappings, includeEstimates: includeEst, groupIds: selected }) : []),
     [all, uid, includeEst, selected],
@@ -87,7 +89,7 @@ export default function OverviewPage() {
               <div className="muted small" style={{ marginBottom: 6 }}>Groups included</div>
               <div className="chips" style={{ margin: 0 }}>
                 <button className="chip" aria-pressed={selected === null} onClick={() => setSelected(null)}>All groups ({trips.length})</button>
-                {trips.map(t => <button key={t.group.id} className="chip" aria-pressed={included(t.group.id) && selected !== null} onClick={() => toggleTrip(t.group.id)}>{t.group.name}</button>)}
+                {trips.map(t => <button key={t.group.id} className="chip" aria-pressed={included(t.group.id) && selected !== null} onClick={() => toggleTrip(t.group.id)}><GroupIcon group={t.group} size={18} /> {t.group.name}</button>)}
               </div>
               <label className="switch" style={{ marginTop: 6 }}><input type="checkbox" checked={includeEst} onChange={e => setIncludeEst(e.target.checked)} /><span>Include estimated amounts</span></label>
             </div>
@@ -146,7 +148,7 @@ export default function OverviewPage() {
                 ))}
                 {p.currencies.map(c => c.trips.length > 0 && (
                   <div key={c.currency + 'g'} className="muted small" style={{ marginTop: 3 }}>
-                    {c.trips.map(t => <div key={t.groupId + t.theirId} style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}><span>{t.groupName}</span><span className={t.net >= 0 ? 'pos-t' : 'neg-t'}>{t.net >= 0 ? '+' : '−'}{fmtMoney(Math.abs(t.net), c.currency)}</span></div>)}
+                    {c.trips.map(t => <div key={t.groupId + t.theirId} style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}><span className="gline">{lookOf(t.groupId) && <GroupIcon group={lookOf(t.groupId)} size={16} />}{t.groupName}</span><span className={t.net >= 0 ? 'pos-t' : 'neg-t'}>{t.net >= 0 ? '+' : '−'}{fmtMoney(Math.abs(t.net), c.currency)}</span></div>)}
                   </div>
                 ))}
               </button>
@@ -166,7 +168,7 @@ export default function OverviewPage() {
               </div>
               {c.trips.map(t => (
                 <details className="pair" key={t.groupId + t.theirId} style={{ marginTop: 10 }}>
-                  <summary><span>{t.groupName}{t.estimated && <> <span className="tag">est.</span></>}</span><span className={t.net >= 0 ? 'pos-t' : 'neg-t'}>{t.net >= 0 ? '+' : '−'}{fmtMoney(Math.abs(t.net), c.currency)}</span></summary>
+                  <summary><span className="gline">{lookOf(t.groupId) && <GroupIcon group={lookOf(t.groupId)} size={18} />}{t.groupName}{t.estimated && <> <span className="tag">est.</span></>}</span><span className={t.net >= 0 ? 'pos-t' : 'neg-t'}>{t.net >= 0 ? '+' : '−'}{fmtMoney(Math.abs(t.net), c.currency)}</span></summary>
                   <div className="why">
                     {t.rows.map((r, i) => <div className="ln" key={i}><span>{r.text}<br /><span className="muted small">{fmtDate(r.date)}</span></span><span className={'a ' + (r.amount >= 0 ? '' : 'neg-t')}>{r.amount >= 0 ? '+' : '−'}{fmtMoney(Math.abs(r.amount), c.currency)}</span></div>)}
                     {t.pendingToMe > 0 && <div className="small" style={{ color: 'var(--est)', marginTop: 6 }}>{fmtMoney(t.pendingToMe, c.currency)} paid to you is waiting for your confirmation.</div>}

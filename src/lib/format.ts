@@ -10,7 +10,7 @@ export const fmtTime = (t: string | null): string => {
 const p2 = (n: number) => String(n).padStart(2, '0')
 export const todayStr = (): string => { const n = new Date(); return `${n.getFullYear()}-${p2(n.getMonth() + 1)}-${p2(n.getDate())}` }
 export const nowTime = (): string => { const n = new Date(); return `${p2(n.getHours())}:${p2(n.getMinutes())}` }
-export const slug = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'trip'
+export const slug = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'group'
 export const initial = (s: string): string => (s.trim()[0] ?? '?').toUpperCase()
 
 /** Turn a Supabase/Postgres error into something a traveler can act on. */

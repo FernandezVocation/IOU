@@ -9,6 +9,11 @@ export interface Group {
   created_at: string
   /** What the group is for: Trip, Household, Event, or anything typed. Missing on old data. */
   kind?: string
+  /** The currency expenses are entered in by default. Missing means the settle currency. */
+  spending_currency?: string | null
+  /** Picked icon name and #RRGGBB colour. Missing means the default for the group type. */
+  icon?: string | null
+  color?: string | null
 }
 export interface Member {
   user_id: string
@@ -24,6 +29,8 @@ export interface Traveler {
   color: string
   user_id: string | null
   sort_order: number
+  /** The currency this person's card statement is in. Missing means the settle currency. */
+  statement_currency?: string | null
 }
 export interface SplitRow { traveler_id: string; value: number }
 export interface Receipt {
@@ -49,6 +56,9 @@ export interface Expense {
   amount: number
   currency: string
   settled_amount: number | null
+  /** What the payer's card statement charged, in their statement currency (turned into an estimate at the group rate). */
+  charged_amount?: number | null
+  charged_currency?: string | null
   payer_id: string
   split_mode: SplitMode
   created_at: string

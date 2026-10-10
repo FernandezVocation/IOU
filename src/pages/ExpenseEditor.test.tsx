@@ -4,12 +4,13 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 
 const rpc = vi.fn(async (..._args: unknown[]) => ({ data: 'id', error: null }))
+const updEq = vi.fn(async (..._a: unknown[]) => ({ error: null }))
 const delEq = vi.fn(async (..._a: unknown[]) => ({ error: null }))
 vi.mock('../lib/supabase', () => ({
   configured: true,
   supabase: {
     rpc: (...a: unknown[]) => rpc(...a),
-    from: () => ({ insert: async () => ({ error: null }), delete: () => ({ in: async () => ({ error: null }), eq: (...a: unknown[]) => delEq(...a) }) }),
+    from: () => ({ update: () => ({ eq: async (...a: unknown[]) => updEq(...a) }), insert: async () => ({ error: null }), delete: () => ({ in: async () => ({ error: null }), eq: (...a: unknown[]) => delEq(...a) }) }),
     storage: { from: () => ({ createSignedUrls: async () => ({ data: [] }), upload: async () => ({ error: null }), remove: async () => ({}) }) },
   },
 }))
@@ -153,5 +154,68 @@ describe('expense entry: settle currency by default, foreign on demand', () => {
     await screen.findByRole('alertdialog')
     fireEvent.click(screen.getAllByText('Delete').find(el => el.closest('[role=alertdialog]'))!)
     await waitFor(() => expect(delEq).toHaveBeenCalledWith('id', 'e9'))
+  })
+})
+
+describe('a group that spends in another currency than it settles in', () => {
+  const venice: GroupData = {
+    ...base, group: { ...base.group, spending_currency: 'EUR' }, rates: { EUR: 1.5, QAR: 0.37 },
+    travelers: [{ ...trav('a', 'Ann', 'u1') }, { ...trav('b', 'Bo'), statement_currency: 'QAR' }, trav('c', 'Cy')],
+  }
+  it('opens in the spending currency with no toggle, and the statement field already showing', () => {
+    mount('new', venice)
+    expect((screen.getByLabelText('Currency') as HTMLSelectElement).value).toBe('EUR')
+    expect(screen.queryByLabelText('Paid in a different currency')).toBeNull()
+    expect(screen.getByLabelText(/Charged in CAD/)).toBeTruthy()
+  })
+  it('a CAD-card payer types the exact CAD amount and it is saved as the settle amount', async () => {
+    mount('new', venice)
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '100' } })
+    fireEvent.change(screen.getByLabelText(/Charged in CAD/), { target: { value: '152' } })
+    fireEvent.click(screen.getByText('Save'))
+    await waitFor(() => expect(rpc).toHaveBeenCalled())
+    expect(lastCall().p).toMatchObject({ currency: 'EUR', amount: 100, settled_amount: 152, charged_amount: null, charged_currency: null })
+  })
+  it('a QAR-card payer enters the QAR charge, sees the converted figure, and can leave the exact CAD blank', async () => {
+    mount('new', venice)
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '100' } })
+    fireEvent.change(screen.getByLabelText(/Paid by/), { target: { value: 'b' } })
+    expect(screen.queryByLabelText(/Charged in CAD/)).toBeNull()
+    fireEvent.change(screen.getByLabelText('Charged to the card, in QAR'), { target: { value: '600' } })
+    expect(screen.getByText(/counts as ≈/).textContent).toContain('222.00')   // 600 × 0.37
+    fireEvent.click(screen.getByText('Save'))
+    await waitFor(() => expect(rpc).toHaveBeenCalled())
+    expect(lastCall().p).toMatchObject({ currency: 'EUR', amount: 100, settled_amount: null, charged_amount: 600, charged_currency: 'QAR' })
+  })
+  it('typing the exact CAD amount overrides the rate', async () => {
+    mount('new', venice)
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '100' } })
+    fireEvent.change(screen.getByLabelText(/Paid by/), { target: { value: 'b' } })
+    fireEvent.change(screen.getByLabelText('Charged to the card, in QAR'), { target: { value: '600' } })
+    fireEvent.change(screen.getByLabelText(/Exact CAD amount/), { target: { value: '219.40' } })
+    fireEvent.click(screen.getByText('Save'))
+    await waitFor(() => expect(rpc).toHaveBeenCalled())
+    expect(lastCall().p).toMatchObject({ settled_amount: 219.4, charged_amount: 600, charged_currency: 'QAR' })
+  })
+  it('says so when there is no rate for the statement currency', () => {
+    mount('new', { ...venice, rates: { EUR: 1.5 } })
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '100' } })
+    fireEvent.change(screen.getByLabelText(/Paid by/), { target: { value: 'b' } })
+    fireEvent.change(screen.getByLabelText('Charged to the card, in QAR'), { target: { value: '600' } })
+    expect(screen.getByText(/No QAR rate is set/)).toBeTruthy()
+  })
+  it('can still be switched to the settle currency for a local purchase', async () => {
+    mount('new', venice)
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '12' } })
+    fireEvent.change(screen.getByLabelText('Currency'), { target: { value: 'CAD' } })
+    expect(screen.queryByLabelText(/Charged in CAD/)).toBeNull()
+    fireEvent.click(screen.getByText('Save'))
+    await waitFor(() => expect(rpc).toHaveBeenCalled())
+    expect(lastCall().p).toMatchObject({ currency: 'CAD', amount: 12, settled_amount: null, charged_amount: null })
+  })
+  it('remembers a person’s card currency when they change it', async () => {
+    mount('new', venice)
+    fireEvent.change(screen.getByLabelText(/card statement is in/), { target: { value: 'USD' } })
+    await waitFor(() => expect(updEq).toHaveBeenCalledWith('id', 'a'))
   })
 })

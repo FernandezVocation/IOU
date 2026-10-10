@@ -1,4 +1,5 @@
 import { createContext, useContext } from 'react'
+import GroupIcon from '../components/GroupIcon'
 import { Link, NavLink, Outlet, useParams } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useGroupData } from '../lib/useGroupData'
@@ -62,8 +63,13 @@ export function TabsShell() {
         <div className="top">
           <div>
             <Link className="backlink" to="/">← Your groups</Link> <Link className="backlink" to="/overview" style={{ marginLeft: 12 }}>Overview</Link>
-            <h1>{data.group.name}</h1>
-            <div className="sub">Balances in {data.group.currency} · {data.travelers.length} {data.travelers.length === 1 ? 'person' : 'people'}</div>
+            <div className="gh">
+              <GroupIcon group={data.group} size={44} />
+              <div>
+                <h1>{data.group.name}</h1>
+                <div className="sub">Balances in {data.group.currency} · {data.travelers.length} {data.travelers.length === 1 ? 'person' : 'people'}</div>
+              </div>
+            </div>
           </div>
         </div>
         {!canEdit && <div className="notice" role="status">You have view-only access. Ask the group owner if you need to add expenses.</div>}

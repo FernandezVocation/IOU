@@ -14,7 +14,7 @@ import { useGroup } from './GroupShell'
 interface NewFile { blob: Blob; type: string; name: string; preview: string }
 interface Form {
   date: string; time: string; vendor: string; location: string; category: string; subcategory: string; notes: string
-  amount: string; foreign: boolean; pick: string; otherCur: string; settled: string
+  amount: string; foreign: boolean; pick: string; otherCur: string; settled: string; charged: string
   payerId: string; mode: SplitMode; entries: Record<string, string>
 }
 
@@ -49,6 +49,7 @@ export default function ExpenseEditor() {
   const { user } = useAuth()
   const [confirmDel, setConfirmDel] = useState(false)
   const g = data.group, base = g.currency
+  const spending = g.spending_currency && g.spending_currency !== base ? g.spending_currency : null   // set only when expenses are usually entered in another currency
   const existing: Expense | undefined = eid === 'new' ? undefined : data.expenses.find(e => e.id === eid)
   const back = '/g/' + g.id
 
@@ -66,21 +67,22 @@ export default function ExpenseEditor() {
     if (inited.current) return
     if (eid !== 'new' && !existing) return
     inited.current = true
-    const foreign = existing ? existing.currency !== base : false
+    const foreign = existing ? existing.currency !== base : !!spending
     const lastF = lsGet(LAST_FOREIGN)
-    const startCur = existing && foreign ? existing.currency : (lastF && isValidCurrency(lastF) && lastF !== base ? lastF : COMMON_CURRENCIES.find(c => c !== base) ?? 'USD')
+    const startCur = existing && foreign ? existing.currency : spending ? spending : (lastF && isValidCurrency(lastF) && lastF !== base ? lastF : COMMON_CURRENCIES.find(c => c !== base) ?? 'USD')
     const inList = COMMON_CURRENCIES.includes(startCur)
     setForm({
       date: existing?.spent_on ?? todayStr(), time: existing ? (existing.spent_at ?? '').slice(0, 5) : nowTime(),
       vendor: existing?.vendor ?? '', location: existing?.location ?? '', category: existing?.category ?? '', subcategory: existing?.subcategory ?? '', notes: existing?.notes ?? '',
       amount: existing ? String(existing.amount) : '', foreign, pick: inList ? startCur : '__other', otherCur: inList ? '' : startCur,
       settled: existing?.settled_amount != null ? String(existing.settled_amount) : '',
+      charged: existing?.charged_amount != null ? String(existing.charged_amount) : '',
       payerId: existing?.payer_id ?? data.me?.id ?? data.travelers[0]?.id ?? '',
       mode: existing?.split_mode ?? 'equal',
       entries: existing ? Object.fromEntries(existing.splits.map(s => [s.traveler_id, String(s.value)])) : Object.fromEntries(data.travelers.map(t => [t.id, '1'])),
     })
     setKept(existing?.receipts ?? [])
-  }, [eid, existing, base, data.me, data.travelers])
+  }, [eid, existing, base, spending, data.me, data.travelers])
 
   // Signed URLs for stored receipts (bucket is private).
   const keptKey = kept.map(r => r.path).join('|')
@@ -97,6 +99,9 @@ export default function ExpenseEditor() {
 
   const cur = form ? (form.foreign ? (form.pick === '__other' ? form.otherCur.trim().toUpperCase() : form.pick) : base) : base
   const amountNum = form ? parseNum(form.amount) : NaN
+  // The payer's own card currency. It decides what the "statement" field means.
+  const payerT = form ? data.travelers.find(t => t.id === form.payerId) : undefined
+  const stmtCur = (existing && form && form.payerId === existing.payer_id && existing.charged_currency) || payerT?.statement_currency || base
   const totalMinor = amountNum > 0 && isValidCurrency(cur) ? toMinor(amountNum, cur) : 0
 
   const ids = form ? Object.keys(form.entries) : []
@@ -130,7 +135,7 @@ export default function ExpenseEditor() {
     return Object.fromEntries(keys.map(k => [k, '1']))
   }
   const setMode = (m: SplitMode) => setForm(p => (p ? { ...p, mode: m, entries: evenSplit(m, p.entries) } : p))
-  const toggleForeign = (on: boolean) => setForm(p => (p ? { ...p, foreign: on, settled: on ? p.settled : '', entries: p.mode === 'exact' ? evenSplit('exact', p.entries) : p.entries } : p))
+  const toggleForeign = (on: boolean) => setForm(p => (p ? { ...p, foreign: on, settled: on ? p.settled : '', charged: on ? p.charged : '', entries: p.mode === 'exact' ? evenSplit('exact', p.entries) : p.entries } : p))
   const toggleWho = (id: string, on: boolean) => setForm(p => {
     if (!p) return p
     const entries = { ...p.entries }
@@ -157,16 +162,23 @@ export default function ExpenseEditor() {
       if (!(s > 0)) { toast(`Enter the ${base} amount as a number, or leave it blank.`); return }
       settled = s
     }
+    // The payer's statement amount (in their own card currency) when that is neither the group currency nor what the bill was in.
+    let charged: { amount: number; currency: string } | null = null
+    if (f.foreign && cur !== base && stmtCur !== base && stmtCur !== cur && f.charged.trim() !== '') {
+      const c = parseNum(f.charged)
+      if (!(c > 0)) { toast(`Enter the ${stmtCur} amount as a number, or leave it blank.`); return }
+      charged = { amount: c, currency: stmtCur }
+    }
     setSaving(true)
     const id = existing?.id ?? crypto.randomUUID()
     const splits = ids.map(i => ({ traveler_id: i, value: f.mode === 'equal' ? 1 : parseNum(f.entries[i]) }))
     const { error } = await supabase.rpc('save_expense', {
       p_id: id, p_group: g.id,
-      p: { spent_on: f.date, spent_at: f.time || '', vendor: f.vendor.trim(), location: f.location.trim(), category: f.category.trim(), subcategory: f.category.trim() ? f.subcategory.trim() : '', notes: f.notes.trim(), amount: amountNum, currency: cur, settled_amount: settled, payer_id: f.payerId, split_mode: f.mode },
+      p: { spent_on: f.date, spent_at: f.time || '', vendor: f.vendor.trim(), location: f.location.trim(), category: f.category.trim(), subcategory: f.category.trim() ? f.subcategory.trim() : '', notes: f.notes.trim(), amount: amountNum, currency: cur, settled_amount: settled, charged_amount: charged?.amount ?? null, charged_currency: charged?.currency ?? null, payer_id: f.payerId, split_mode: f.mode },
       p_splits: splits,
     })
     if (error) { toast(friendly(error)); setSaving(false); return }
-    if (f.foreign && cur !== base) lsSet(LAST_FOREIGN, cur)
+    if (f.foreign && cur !== base && !spending) lsSet(LAST_FOREIGN, cur)
 
     // Receipts are secondary to the expense: the expense is already saved, so report failures without losing it.
     let receiptProblem = false
@@ -201,10 +213,28 @@ export default function ExpenseEditor() {
 
   const rate = data.rates[cur]
   const settledNum = parseNum(f.settled)
+  const chargedNum = parseNum(f.charged)
+  const inBase = (n: number, r: number) => fmtMoney(Math.round(n * r * 10 ** currencyDigits(base)), base)
+  const sRate = data.rates[stmtCur]
+  const useCharged = stmtCur !== base && stmtCur !== cur
   const hint = settledNum > 0 && amountNum > 0 ? `Effective rate: 1 ${cur} = ${(settledNum / amountNum).toFixed(4)} ${base}`
-    : rate > 0 && amountNum > 0 ? `Estimated at your group’s rate (1 ${cur} = ${rate} ${base}): ≈ ${fmtMoney(Math.round(amountNum * rate * 10 ** currencyDigits(base)), base)}. Fill in the real amount when your statement posts.`
+    : useCharged && chargedNum > 0 && sRate > 0 ? `Your ${fmtMoney(toMinor(chargedNum, stmtCur), stmtCur)} counts as ≈ ${inBase(chargedNum, sRate)} at your group’s rate (1 ${stmtCur} = ${sRate} ${base}). Type the exact ${base} amount below once you know it.`
+    : useCharged && chargedNum > 0 ? `No ${stmtCur} rate is set for this group. Type the exact ${base} amount below, or ask an admin to add a ${stmtCur} rate in Group settings.`
+    : stmtCur !== base && stmtCur === cur && amountNum > 0 && sRate > 0 ? `Paid in ${cur}, counts as ≈ ${inBase(amountNum, sRate)} at your group’s rate (1 ${cur} = ${sRate} ${base}). Type the exact ${base} amount once your statement posts.`
+    : rate > 0 && amountNum > 0 ? `Estimated at your group’s rate (1 ${cur} = ${rate} ${base}): ≈ ${inBase(amountNum, rate)}. Fill in the real amount when your statement posts.`
     : `No ${cur || 'currency'} rate set. Enter the ${base} amount now or add a rate in Group settings, otherwise this expense is not counted.`
-  const currencyChoices = [...new Set([...COMMON_CURRENCIES.filter(c => c !== base), ...(isValidCurrency(cur) && cur !== base ? [cur] : [])])]
+  const onCurChange = (v: string) => setForm(p => {
+    if (!p) return p
+    if (v === base) return { ...p, foreign: false, settled: '', charged: '' }
+    return { ...p, foreign: true, pick: v }
+  })
+  const currencyChoices = [...new Set([...(spending ? [spending] : []), ...COMMON_CURRENCIES.filter(c => c !== base), ...(isValidCurrency(cur) && cur !== base ? [cur] : [])])]
+  const stmtChoices = [...new Set([base, ...(spending ? [spending] : []), stmtCur, ...COMMON_CURRENCIES])]
+  async function setStmtCur(v: string) {
+    if (!payerT) return
+    const { error } = await supabase.from('travelers').update({ statement_currency: v === base ? null : v }).eq('id', payerT.id)
+    if (error) toast(friendly(error)); else await reload()
+  }
 
   return (
     <div className="sheet">
@@ -223,14 +253,15 @@ export default function ExpenseEditor() {
             <input className="inp big" id="amt" inputMode="decimal" placeholder="0.00" value={f.amount} onChange={e => set('amount', e.target.value)} autoFocus={!existing} />
           </div>
           <div>
-            {f.foreign ? (
+            {f.foreign || spending ? (
               <>
                 <label className="lbl" style={{ marginTop: 0 }} htmlFor="cur">Currency</label>
-                <select id="cur" value={f.pick} onChange={e => set('pick', e.target.value)}>
+                <select id="cur" value={spending && !f.foreign ? base : f.pick} onChange={e => onCurChange(e.target.value)}>
                   {currencyChoices.map(c => <option key={c}>{c}</option>)}
+                  {spending && !currencyChoices.includes(base) && <option>{base}</option>}
                   <option value="__other">Other…</option>
                 </select>
-                {f.pick === '__other' && <input type="text" className="inp" maxLength={3} placeholder="e.g. PLN" value={f.otherCur} onChange={e => set('otherCur', e.target.value)} style={{ marginTop: 6, textTransform: 'uppercase' }} aria-label="Currency code" />}
+                {f.foreign && f.pick === '__other' && <input type="text" className="inp" maxLength={3} placeholder="e.g. PLN" value={f.otherCur} onChange={e => set('otherCur', e.target.value)} style={{ marginTop: 6, textTransform: 'uppercase' }} aria-label="Currency code" />}
               </>
             ) : (
               <>
@@ -241,13 +272,29 @@ export default function ExpenseEditor() {
           </div>
         </div>
 
-        <label className="switch" style={{ marginTop: 14 }}>
-          <input type="checkbox" checked={f.foreign} onChange={e => toggleForeign(e.target.checked)} />
-          <span>Paid in a different currency</span>
-        </label>
+        {!spending && (
+          <label className="switch" style={{ marginTop: 14 }}>
+            <input type="checkbox" checked={f.foreign} onChange={e => toggleForeign(e.target.checked)} />
+            <span>Paid in a different currency</span>
+          </label>
+        )}
         {f.foreign && (
           <div>
-            <label className="lbl" htmlFor="settled">Charged in {base} (from your card statement)</label>
+            {!readOnly && (
+              <>
+                <label className="lbl" htmlFor="stmtcur">{payerT ? (payerT.id === data.me?.id ? 'Your' : payerT.name + '’s') : 'Their'} card statement is in</label>
+                <select id="stmtcur" value={stmtCur} onChange={e => setStmtCur(e.target.value)}>
+                  {stmtChoices.map(c => <option key={c}>{c}</option>)}
+                </select>
+              </>
+            )}
+            {useCharged && (
+              <>
+                <label className="lbl" htmlFor="charged">Charged to the card, in {stmtCur}</label>
+                <input className="inp" id="charged" inputMode="decimal" placeholder="Optional, add it later" value={f.charged} onChange={e => set('charged', e.target.value)} />
+              </>
+            )}
+            <label className="lbl" htmlFor="settled">{stmtCur === base ? `Charged in ${base} (from your card statement)` : `Exact ${base} amount (optional)`}</label>
             <input className="inp" id="settled" inputMode="decimal" placeholder="Optional, add it later" value={f.settled} onChange={e => set('settled', e.target.value)} />
             <div className="muted small" style={{ marginTop: 6 }}>{hint}</div>
           </div>

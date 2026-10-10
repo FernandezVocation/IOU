@@ -8,6 +8,7 @@ import { canEditGroup, roleLabel } from '../lib/access'
 import { Avatar, ConfirmDialog, useArm, useToast } from '../components/ui'
 import BalanceLinks from '../components/BalanceLinks'
 import KindPicker from '../components/KindPicker'
+import GroupLookPicker from '../components/GroupLookPicker'
 import { useGroup } from './GroupShell'
 
 const PALETTE = ['#2B44FF', '#0E7C61', '#C23B22', '#8A4FD3', '#B07A00', '#0B8FA8', '#C7366F', '#5B6B2E']
@@ -74,8 +75,14 @@ export default function TripTab() {
     if (error) toast(friendly(error)); else nav('/', { replace: true })
   }
 
+  const spendCur = g.spending_currency && g.spending_currency !== cur ? g.spending_currency : null
   const used = new Set(data.expenses.map(e => e.currency).filter(c => c !== cur))
   Object.keys(data.rates).forEach(c => used.add(c))
+  if (spendCur) used.add(spendCur)
+  data.travelers.forEach(t => { if (t.statement_currency && t.statement_currency !== cur) used.add(t.statement_currency) })
+  // Show each person's card currency only where it can matter: a group that spends in, or has paid in, another currency.
+  const showStmt = used.size > 0
+  const stmtOptions = [...new Set([cur, ...(spendCur ? [spendCur] : []), ...data.travelers.map(t => t.statement_currency ?? '').filter(Boolean), ...COMMON_CURRENCIES])]
 
   return (
     <>
@@ -103,7 +110,7 @@ export default function TripTab() {
 
       <div className="sect">
         <h2>People</h2>
-        <div className="muted small">Everyone who splits costs. The one marked “you” is linked to your account.</div>
+        <div className="muted small">Everyone who splits costs. The one marked “you” is linked to your account.{showStmt ? ` The currency beside each name is what their card statement is in. It sets what “charged to the card” means on their expenses.` : ''}</div>
         {data.travelers.map(t => {
           const k = 'delp:' + t.id
           return (
@@ -111,13 +118,17 @@ export default function TripTab() {
               <Avatar name={t.name} color={t.color} />
               <input type="text" defaultValue={t.name} maxLength={40} aria-label="Name" key={t.id + t.name}
                 onBlur={e => { const v = e.target.value.trim(); if (v && v !== t.name) run(supabase.from('travelers').update({ name: v }).eq('id', t.id)); else e.target.value = t.name }} />
+              {showStmt && <select className="stmt" aria-label={`Statement currency for ${t.name}`} value={t.statement_currency ?? cur} disabled={!canEditGroup(data)}
+                onChange={e => run(supabase.from('travelers').update({ statement_currency: e.target.value === cur ? null : e.target.value }).eq('id', t.id))}>
+                {stmtOptions.map(c => <option key={c}>{c}</option>)}
+              </select>}
               {data.me?.id === t.id ? <span className="tag" style={{ background: 'var(--soft)', color: 'var(--muted)' }}>you</span>
                 : <button className={'btn small danger' + (arm.is(k) ? ' armed' : '')} onClick={() => arm.is(k) ? removePerson(t.id) : arm.arm(k)}>{arm.is(k) ? 'Confirm' : 'Remove'}</button>}
             </div>
           )
         })}
         {canEditGroup(data) && <div className="prow">
-          <input type="text" value={newPerson} onChange={e => setNewPerson(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addPerson() }} placeholder="Add a person" maxLength={40} aria-label="New traveler name" />
+          <input type="text" value={newPerson} onChange={e => setNewPerson(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addPerson() }} placeholder="Add a person" maxLength={40} aria-label="New person name" />
           <button className="btn primary" onClick={addPerson}>Add</button>
         </div>}
         <div className="muted small">A person who is on an expense or payment can’t be removed.</div>
@@ -125,10 +136,15 @@ export default function TripTab() {
 
       <div className="sect">
         <h2>Exchange rates</h2>
-        <div className="muted small">Used only to estimate foreign expenses until you enter the real {cur} amount from your statement. Statement amounts always win.</div>
+        <div className="muted small">One rate per currency for the whole group, for the bill’s currency and for each person’s card currency. Used to estimate foreign expenses until the exact {cur} amount from a statement is entered, and that exact amount always wins.</div>
         {[...used].sort().map(c => {
-          const settled = data.expenses.filter(e => e.currency === c && e.settled_amount != null && e.amount > 0)
-          const sa = settled.reduce((s, e) => s + e.amount, 0), sb = settled.reduce((s, e) => s + (e.settled_amount as number), 0)
+          // Real exchange rates people actually got: bill currency -> exact settle amount, and card-statement currency -> exact settle amount.
+          const pairs = [
+            ...data.expenses.filter(e => e.currency === c && e.settled_amount != null && e.amount > 0).map(e => [e.amount, e.settled_amount as number]),
+            ...data.expenses.filter(e => e.charged_currency === c && e.charged_amount != null && e.charged_amount > 0 && e.settled_amount != null).map(e => [e.charged_amount as number, e.settled_amount as number]),
+          ]
+          const settled = pairs
+          const sa = pairs.reduce((s, p) => s + p[0], 0), sb = pairs.reduce((s, p) => s + p[1], 0)
           const avg = sa > 0 ? sb / sa : null
           return (
             <div className="panel" key={c}>
@@ -163,11 +179,20 @@ export default function TripTab() {
                 {kind.trim() && kind.trim() !== (g.kind || 'Trip') && <button className="btn small" style={{ marginTop: 8 }} onClick={() => run(supabase.from('groups').update({ kind: kind.trim() }).eq('id', g.id), 'Type saved.')}>Save type</button>}
               </>
             : <div>{g.kind || 'Trip'}</div>}
+          <span className="lbl">Icon and colour</span>
+          <GroupLookPicker kind={g.kind || 'Trip'} icon={g.icon} color={g.color} disabled={!data.isOwner}
+            onChange={n => run(supabase.from('groups').update({ icon: n.icon, color: n.color }).eq('id', g.id))} />
           <label className="lbl" htmlFor="gcur">Settle currency</label>
           <select id="gcur" value={cur} disabled={!data.isOwner || hasMoney} onChange={e => run(supabase.from('groups').update({ currency: e.target.value }).eq('id', g.id))}>
             {[...new Set([cur, ...COMMON_CURRENCIES])].map(c => <option key={c}>{c}</option>)}
           </select>
           <div className="muted small" style={{ marginTop: 6 }}>{hasMoney ? 'Locked because expenses exist, so statement amounts keep their meaning.' : data.isOwner ? 'Set by the group owner.' : 'Only the group owner can change this.'}</div>
+          <label className="lbl" htmlFor="gspend">Spending currency</label>
+          <select id="gspend" value={g.spending_currency ?? cur} disabled={!data.isOwner}
+            onChange={e => run(supabase.from('groups').update({ spending_currency: e.target.value === cur ? null : e.target.value }).eq('id', g.id))}>
+            {[...new Set([cur, g.spending_currency ?? cur, ...COMMON_CURRENCIES])].map(c => <option key={c}>{c}</option>)}
+          </select>
+          <div className="muted small" style={{ marginTop: 6 }}>The currency new expenses start in. Pick something other than {cur} (for example EUR for a euro trip) and each expense asks for the card statement amount; people can still switch an expense back to {cur}. Everything is still calculated in {cur}.</div>
         </div>
       </div>
 

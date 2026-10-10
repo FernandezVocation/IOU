@@ -5,6 +5,7 @@ import { l1, slug, todayStr } from './format'
 import { receiptFileName, uniqueName } from './receiptNames'
 import { statusLabel, userName } from './payments'
 import { catLabel } from './categories'
+import { groupLook, hexArgb, hexToRgb, tilePng } from './groupLook'
 
 export type ExportMode = 'pending' | 'final'
 interface Ctx { data: GroupData; result: LedgerResult; mode: ExportMode }
@@ -44,8 +45,9 @@ export async function buildXlsx(ctx: Ctx): Promise<Blob> {
   const ExcelJS = mod.default ?? mod
   const wb = new ExcelJS.Workbook()
   const money = '#,##0.' + '0'.repeat(currencyDigits(cur))
+  const look = groupLook(data.group)
   const sheet = (name: string, rows: unknown[][], widths: number[], moneyCols: number[] = []) => {
-    const ws = wb.addWorksheet(name)
+    const ws = wb.addWorksheet(name, { properties: { tabColor: { argb: hexArgb(look.color) } } })
     rows.forEach(r => ws.addRow(r))
     widths.forEach((w, i) => { ws.getColumn(i + 1).width = w })
     moneyCols.forEach(c => { ws.getColumn(c).numFmt = money })
@@ -59,6 +61,9 @@ export async function buildXlsx(ctx: Ctx): Promise<Blob> {
   data.travelers.forEach(t => sum.push([t.name, M(R.paid[t.id]), M(R.share[t.id]), M(R.sent[t.id]), M(R.received[t.id]), M(R.balance[t.id])]))
   sum.push([], ['Total spend counted', M(R.total)])
   const s1 = sheet('Summary', sum, [30, 14, 16, 16, 18, 26], [2, 3, 4, 5, 6]); bold(s1, 1); bold(s1, headerRow)
+  // The group's colour on its title cell, so the file is recognisable at a glance.
+  s1.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: hexArgb(look.color) } }
+  s1.getCell('A1').font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } }
 
   const who: unknown[][] = [['PAYMENT PLAN: who pays whom'], [], ['Itemized (each pair settles directly)'], ['From', 'To', `Amount (${cur})`]]
   R.pairs.forEach(p => who.push([nm(p.debtor), nm(p.creditor), M(p.net)]))
@@ -129,7 +134,10 @@ export async function buildPdf(ctx: Ctx): Promise<Blob> {
     y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 7
   }
 
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.text(l1(data.group.name), mg, y); y += 7
+  const look = groupLook(data.group), tile = await tilePng(look)
+  doc.setFillColor(...hexToRgb(look.color)); doc.rect(0, 0, W, 4, 'F')
+  if (tile) doc.addImage(tile, 'PNG', mg, y - 6, 11, 11)
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(0); doc.text(l1(data.group.name), tile ? mg + 14 : mg, y + 2); y += 9
   doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
   notes({ data, result: R, mode }).forEach(n => { const lines = doc.splitTextToSize(l1(n), W - 2 * mg) as string[]; doc.text(lines, mg, y); y += 4.2 * lines.length })
   doc.text(l1(`Currency: ${cur}   Generated: ${new Date().toLocaleString()}   Total counted: ${A(R.total)}`), mg, y); y += 8

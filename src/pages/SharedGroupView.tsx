@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import GroupIcon from '../components/GroupIcon'
 import { computeLedger } from '../lib/ledger'
 import { buildBreakdown, type BreakdownRow } from '../lib/breakdown'
 import { catLabel } from '../lib/categories'
@@ -57,7 +58,7 @@ export default function SharedGroupView({ trip, token, at, stale, onRefresh }: {
       <div className="top">
         <div>
           <div className="muted small" style={{ marginBottom: 4 }}>Read-only view of the whole group</div>
-          <h1>{data.group.name}</h1>
+          <div className="gh"><GroupIcon group={data.group} size={44} /><h1>{data.group.name}</h1></div>
           <div className="sub">{data.travelers.length} people · {cur} · updated {at.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
         </div>
         <button className="btn small" onClick={onRefresh}>Refresh</button>
