@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { currencyOption } from '../components/currencyOption'
+import { CurrencySelect } from '../components/CurrencySelect'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { COMMON_CURRENCIES, friendly } from '../lib/format'
@@ -119,10 +120,8 @@ export default function TripTab() {
               <Avatar name={t.name} color={t.color} />
               <input type="text" defaultValue={t.name} maxLength={40} aria-label="Name" key={t.id + t.name}
                 onBlur={e => { const v = e.target.value.trim(); if (v && v !== t.name) run(supabase.from('travelers').update({ name: v }).eq('id', t.id)); else e.target.value = t.name }} />
-              {showStmt && <select className="stmt" aria-label={`Statement currency for ${t.name}`} value={t.statement_currency ?? cur} disabled={!canEditGroup(data)}
-                onChange={e => run(supabase.from('travelers').update({ statement_currency: e.target.value === cur ? null : e.target.value }).eq('id', t.id))}>
-                {stmtOptions.map(c => currencyOption(c))}
-              </select>}
+              {showStmt && <CurrencySelect className="stmt" ariaLabel={`Statement currency for ${t.name}`} value={t.statement_currency ?? cur} choices={stmtOptions} disabled={!canEditGroup(data)}
+                onChange={c => run(supabase.from('travelers').update({ statement_currency: c === cur ? null : c }).eq('id', t.id))} />}
               {data.me?.id === t.id ? <span className="tag" style={{ background: 'var(--soft)', color: 'var(--muted)' }}>you</span>
                 : <button className={'btn small danger' + (arm.is(k) ? ' armed' : '')} onClick={() => arm.is(k) ? removePerson(t.id) : arm.arm(k)}>{arm.is(k) ? 'Confirm' : 'Remove'}</button>}
             </div>
@@ -189,10 +188,8 @@ export default function TripTab() {
           </select>
           <div className="muted small" style={{ marginTop: 6 }}>{hasMoney ? 'Locked because expenses exist, so statement amounts keep their meaning.' : data.isOwner ? 'Set by the group owner.' : 'Only the group owner can change this.'}</div>
           <label className="lbl" htmlFor="gspend">Spending currency</label>
-          <select id="gspend" value={g.spending_currency ?? cur} disabled={!data.isOwner}
-            onChange={e => run(supabase.from('groups').update({ spending_currency: e.target.value === cur ? null : e.target.value }).eq('id', g.id))}>
-            {[...new Set([cur, g.spending_currency ?? cur, ...COMMON_CURRENCIES])].map(c => currencyOption(c))}
-          </select>
+          <CurrencySelect id="gspend" value={g.spending_currency ?? cur} choices={[cur, ...COMMON_CURRENCIES]} disabled={!data.isOwner}
+            onChange={c => run(supabase.from('groups').update({ spending_currency: c === cur ? null : c }).eq('id', g.id))} />
           <div className="muted small" style={{ marginTop: 6 }}>The currency new expenses start in. Pick something other than {cur} (for example EUR for a euro trip) and each expense asks for the card statement amount; people can still switch an expense back to {cur}. Everything is still calculated in {cur}.</div>
         </div>
       </div>

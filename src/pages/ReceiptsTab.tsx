@@ -24,7 +24,7 @@ export default function ReceiptsTab() {
   const [zipMsg, setZipMsg] = useState<string | null>(null)
 
   const s = q.trim().toLowerCase()
-  const match = (e: Expense) => !s || [e.vendor, e.location, e.category, e.subcategory ?? '', e.notes, e.spent_on, who(data, e.payer_id, false)].join(' ').toLowerCase().includes(s)
+  const match = (e: Expense) => !s || [e.vendor, e.description ?? '', e.location, e.category, e.subcategory ?? '', e.notes, e.spent_on, who(data, e.payer_id, false)].join(' ').toLowerCase().includes(s)
   const items = useMemo(() => data.expenses.filter(match).flatMap(e => e.receipts.map((r, i) => ({ e, r, i }))), [data.expenses, s]) // eslint-disable-line react-hooks/exhaustive-deps
   const urls = useSignedUrls(items.map(x => x.r.path))
   const total = data.expenses.reduce((n, e) => n + e.receipts.length, 0)
@@ -98,7 +98,7 @@ export default function ReceiptsTab() {
             <Link className="exp" key={e.id} to={`/g/${data.group.id}/expense/${e.id}`}>
               <div className="v">{e.vendor || 'Untitled'}</div>
               <div className="amt">{fmtMoney(toMinor(e.amount, e.currency), e.currency)}</div>
-              <div className="m">{fmtDate(e.spent_on)} · {who(data, e.payer_id)} paid</div>
+              <div className="m">{[e.description, fmtDate(e.spent_on)].filter(Boolean).join(' · ')} · {who(data, e.payer_id)} paid</div>
               <div className="sb" style={{ color: 'var(--accent)' }}>Add receipt →</div>
             </Link>
           ))}

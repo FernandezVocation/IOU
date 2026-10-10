@@ -39,6 +39,7 @@ interface Item {
   date: string
   time: string | null
   vendor: string
+  description: string
   category: string
   subcategory: string
   minor: number
@@ -60,7 +61,7 @@ function itemsOf(d: GroupData, metric: Metric): { items: Item[]; missing: number
       if (share <= 0) { notMine++; continue }
       minor = share
     }
-    items.push({ id: e.id, date: e.spent_on, time: e.spent_at, vendor: e.vendor, category: e.category, subcategory: e.subcategory ?? '', minor, estimated: c.status === 'estimated' })
+    items.push({ id: e.id, date: e.spent_on, time: e.spent_at, vendor: e.vendor, description: e.description ?? '', category: e.category, subcategory: e.subcategory ?? '', minor, estimated: c.status === 'estimated' })
   }
   return { items, missing, notMine }
 }
@@ -82,7 +83,7 @@ export function buildBreakdown(d: GroupData, by: By, metric: Metric): Breakdown 
   const leaves = (arr: Item[], pk: string): BreakdownRow[] =>
     [...arr].sort((a, b) => (a.date + (a.time ?? '')).localeCompare(b.date + (b.time ?? ''))).map(x => ({
       key: pk + '/' + x.id, label: x.vendor || '(no vendor)', minor: x.minor, count: 1, leaf: true, estimated: x.estimated, category: x.category, href: base + x.id,
-      meta: by === 'date' ? [fmtTime(x.time), catLabel(x)].filter(Boolean).join(' · ') : [fmtDate(x.date), by === 'category' ? '' : catLabel(x)].filter(Boolean).join(' · '),
+      meta: (by === 'date' ? [x.description, fmtTime(x.time), catLabel(x)] : [x.description, fmtDate(x.date), by === 'category' ? '' : catLabel(x)]).filter(Boolean).join(' · '),
     }))
 
   let rows: BreakdownRow[]

@@ -57,11 +57,12 @@ describe('expense entry: settle currency by default, foreign on demand', () => {
     expect(screen.queryByLabelText(/Charged in CAD/)).toBeNull()
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '25.50' } })
     fireEvent.change(screen.getByLabelText('Vendor'), { target: { value: 'Taxi' } })
+    fireEvent.change(screen.getByLabelText('Description'), { target: { value: ' Airport to hotel ' } })
     fireEvent.click(screen.getByText('Save'))
     await waitFor(() => expect(rpc).toHaveBeenCalled())
     const c = lastCall()
     expect(rpc.mock.calls[0][0]).toBe('save_expense')
-    expect(c.p).toMatchObject({ currency: 'CAD', amount: 25.5, settled_amount: null, vendor: 'Taxi', payer_id: 'a', split_mode: 'equal' })
+    expect(c.p).toMatchObject({ currency: 'CAD', amount: 25.5, settled_amount: null, vendor: 'Taxi', description: 'Airport to hotel', payer_id: 'a', split_mode: 'equal' })
     expect(c.p_splits).toHaveLength(3)
   })
 

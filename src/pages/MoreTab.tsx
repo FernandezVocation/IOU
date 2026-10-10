@@ -13,7 +13,7 @@ export default function MoreTab() {
         <Link className="moreitem" to={base + '/settings'}><span><b>Group settings</b><span className="sub">People, invite link, balance links, currency, rates</span></span><span aria-hidden>›</span></Link>
         <Link className="moreitem" to="/overview"><span><b>Overview across groups</b><span className="sub">Who owes what in all your groups</span></span><span aria-hidden>›</span></Link>
       </div>
-      <div className="panel"><ThemeToggle /></div>
+      <ThemeToggle />
     </div>
   )
 }

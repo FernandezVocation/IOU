@@ -107,3 +107,15 @@ describe('breakdown across groups', () => {
     expect(food.minor).toBe(money(100) + money(30))
   })
 })
+
+describe('expense description in the breakdown', () => {
+  const g = G('d', 'Rail', 'CAD', [E('d', 'Train', { vendor: 'Italo', description: 'Florence to Rome', amount: 355.15, category: 'Transportation', subcategory: 'Train' })])
+  it('keeps the vendor as the title and puts the description in the line under it', () => {
+    for (const by of ['category', 'sub', 'date', 'vendor'] as const) {
+      const walk = (rows: ReturnType<typeof buildBreakdown>['rows']): ReturnType<typeof buildBreakdown>['rows'] => rows.flatMap(r => r.leaf ? [r] : walk(r.kids ?? []))
+      const leaf = walk(buildBreakdown(g, by, 'total').rows)[0]
+      expect(leaf.label).toBe('Italo')
+      expect(leaf.meta).toMatch(/^Florence to Rome/)
+    }
+  })
+})

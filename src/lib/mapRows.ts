@@ -16,6 +16,7 @@ export function mapExpense(x: any): Expense {
     ...rest,
     amount: Number(rest.amount),
     subcategory: rest.subcategory ?? '',
+    description: rest.description ?? '',
     settled_amount: rest.settled_amount == null ? null : Number(rest.settled_amount),
     charged_amount: rest.charged_amount == null ? null : Number(rest.charged_amount),
     charged_currency: rest.charged_currency ?? null,

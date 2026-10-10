@@ -12,6 +12,7 @@ export interface InvoiceLine {
   date: string
   time: string | null
   vendor: string
+  description?: string
   /** The expense note, shown on the shared page only; never printed on the invoice PDF. */
   notes?: string
   detail: string            // "Food & drink · Lisbon"
@@ -96,7 +97,7 @@ export function buildInvoiceModel(args: { data: GroupData; billTo: string[]; mod
     }
     if (!share && !paid) continue
     const line: InvoiceLine = {
-      expenseId: e.id, date: e.spent_on, time: e.spent_at, vendor: e.vendor || 'Expense', notes: e.notes || undefined,
+      expenseId: e.id, date: e.spent_on, time: e.spent_at, vendor: e.vendor || 'Expense', description: e.description || undefined, notes: e.notes || undefined,
       detail: [e.category ? catLabel(e) : '', e.location].filter(Boolean).join(' · '),
       payerName: nm(e.payer_id),
       original: e.currency !== cur ? `${fmtPlain(toMinor(e.amount, e.currency), e.currency)} ${e.currency}` : null,
@@ -189,7 +190,7 @@ export async function buildInvoicePdf(m: InvoiceModel, images: InvoiceImage[] = 
     autoTable(doc, { startY: y, margin: { left: mg, right: mg }, theme: 'grid', styles: { fontSize: 8.5, cellPadding: 1.8, font: 'helvetica', textColor: INK, lineColor: [220, 225, 220] }, headStyles: { fillColor: ACCENT, textColor: 255, fontStyle: 'bold' }, footStyles: { fillColor: [232, 236, 232], textColor: INK, fontStyle: 'bold' }, ...opts })
     y = lastY() + 8
   }
-  const desc = (l: InvoiceLine) => l1([l.vendor + (l.estimated ? '  (estimated)' : ''), l.detail, l.original ? `Paid ${l.original}` : ''].filter(Boolean).join('\n'))
+  const desc = (l: InvoiceLine) => l1([l.vendor + (l.estimated ? '  (estimated)' : ''), l.description ?? '', l.detail, l.original ? `Paid ${l.original}` : ''].filter(Boolean).join('\n'))
   const when = (l: InvoiceLine) => l.date + (l.time ? '\n' + l.time.slice(0, 5) : '')
 
   // ---- header

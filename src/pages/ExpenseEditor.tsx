@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { currencyOption } from '../components/currencyOption'
+import { CurrencySelect } from '../components/CurrencySelect'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { COMMON_CURRENCIES, friendly, nowTime, todayStr } from '../lib/format'
@@ -14,7 +15,7 @@ import { useGroup } from './GroupShell'
 
 interface NewFile { blob: Blob; type: string; name: string; preview: string }
 interface Form {
-  date: string; time: string; vendor: string; location: string; category: string; subcategory: string; notes: string
+  date: string; time: string; vendor: string; description: string; location: string; category: string; subcategory: string; notes: string
   amount: string; foreign: boolean; pick: string; otherCur: string; settled: string; charged: string
   payerId: string; mode: SplitMode; entries: Record<string, string>
 }
@@ -74,7 +75,7 @@ export default function ExpenseEditor() {
     const inList = COMMON_CURRENCIES.includes(startCur)
     setForm({
       date: existing?.spent_on ?? todayStr(), time: existing ? (existing.spent_at ?? '').slice(0, 5) : nowTime(),
-      vendor: existing?.vendor ?? '', location: existing?.location ?? '', category: existing?.category ?? '', subcategory: existing?.subcategory ?? '', notes: existing?.notes ?? '',
+      vendor: existing?.vendor ?? '', description: existing?.description ?? '', location: existing?.location ?? '', category: existing?.category ?? '', subcategory: existing?.subcategory ?? '', notes: existing?.notes ?? '',
       amount: existing ? String(existing.amount) : '', foreign, pick: inList ? startCur : '__other', otherCur: inList ? '' : startCur,
       settled: existing?.settled_amount != null ? String(existing.settled_amount) : '',
       charged: existing?.charged_amount != null ? String(existing.charged_amount) : '',
@@ -175,7 +176,7 @@ export default function ExpenseEditor() {
     const splits = ids.map(i => ({ traveler_id: i, value: f.mode === 'equal' ? 1 : parseNum(f.entries[i]) }))
     const { error } = await supabase.rpc('save_expense', {
       p_id: id, p_group: g.id,
-      p: { spent_on: f.date, spent_at: f.time || '', vendor: f.vendor.trim(), location: f.location.trim(), category: f.category.trim(), subcategory: f.category.trim() ? f.subcategory.trim() : '', notes: f.notes.trim(), amount: amountNum, currency: cur, settled_amount: settled, charged_amount: charged?.amount ?? null, charged_currency: charged?.currency ?? null, payer_id: f.payerId, split_mode: f.mode },
+      p: { spent_on: f.date, spent_at: f.time || '', vendor: f.vendor.trim(), description: f.description.trim(), location: f.location.trim(), category: f.category.trim(), subcategory: f.category.trim() ? f.subcategory.trim() : '', notes: f.notes.trim(), amount: amountNum, currency: cur, settled_amount: settled, charged_amount: charged?.amount ?? null, charged_currency: charged?.currency ?? null, payer_id: f.payerId, split_mode: f.mode },
       p_splits: splits,
     })
     if (error) { toast(friendly(error)); setSaving(false); return }
@@ -284,9 +285,7 @@ export default function ExpenseEditor() {
             {!readOnly && (
               <>
                 <label className="lbl" htmlFor="stmtcur">{payerT ? (payerT.id === data.me?.id ? 'Your' : payerT.name + '’s') : 'Their'} card statement is in</label>
-                <select id="stmtcur" value={stmtCur} onChange={e => setStmtCur(e.target.value)}>
-                  {stmtChoices.map(c => currencyOption(c))}
-                </select>
+                <CurrencySelect id="stmtcur" value={stmtCur} choices={stmtChoices} onChange={setStmtCur} />
               </>
             )}
             {useCharged && (
@@ -303,6 +302,8 @@ export default function ExpenseEditor() {
 
         <label className="lbl" htmlFor="vendor">Vendor</label>
         <input type="text" id="vendor" value={f.vendor} maxLength={120} list="vendors" autoComplete="off" onChange={e => set('vendor', e.target.value)} />
+        <label className="lbl" htmlFor="description">Description</label>
+        <input type="text" id="description" value={f.description} maxLength={200} placeholder="e.g. Florence to Rome" autoComplete="off" onChange={e => set('description', e.target.value)} />
         <datalist id="vendors">{[...new Set(data.expenses.map(e => e.vendor).filter(Boolean))].slice(0, 60).map(x => <option key={x} value={x} />)}</datalist>
         <div className="row2">
           <div><label className="lbl" htmlFor="date">Date</label><input type="date" id="date" value={f.date} onChange={e => set('date', e.target.value)} /></div>

@@ -74,7 +74,7 @@ export default function GroupsPage() {
           <button className="btn">Join</button>
         </form>
       </div>
-      <div className="sect"><div className="panel"><ThemeToggle /></div></div>
+      <div className="sect"><ThemeToggle /></div>
     </div>
     <TopNav />
     </>

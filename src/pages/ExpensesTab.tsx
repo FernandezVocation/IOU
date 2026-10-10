@@ -24,7 +24,7 @@ export default function ExpensesTab() {
   let list = [...data.expenses]
   if (needOnly) list = list.filter(e => R.calc[e.id]?.status !== 'confirmed')
   const s = q.trim().toLowerCase()
-  if (s) list = list.filter(e => [e.vendor, e.location, e.category, e.subcategory ?? '', e.notes, who(data, e.payer_id, false)].join(' ').toLowerCase().includes(s))
+  if (s) list = list.filter(e => [e.vendor, e.description ?? '', e.location, e.category, e.subcategory ?? '', e.notes, who(data, e.payer_id, false)].join(' ').toLowerCase().includes(s))
   list.sort((a, b) => b.spent_on.localeCompare(a.spent_on) || (b.spent_at ?? '').localeCompare(a.spent_at ?? '') || b.created_at.localeCompare(a.created_at))
 
   const groups = new Map<string, Expense[]>()
@@ -42,7 +42,7 @@ export default function ExpensesTab() {
         </div>
       </div>
       {needs.length > 0 && <div className="notice">{needs.length} expense{needs.length === 1 ? '' : 's'} in another currency still need the {cur} amount from your card statement.</div>}
-      <input type="search" className="inp" placeholder="Search vendor, place, category, notes" value={q} onChange={e => setQ(e.target.value)} aria-label="Search expenses" />
+      <input type="search" className="inp" placeholder="Search vendor, description, place, category, notes" value={q} onChange={e => setQ(e.target.value)} aria-label="Search expenses" />
       <div className="chips"><button className="chip" aria-pressed={needOnly} onClick={() => setNeedOnly(v => !v)}>Needs {cur} amount ({needs.length})</button></div>
       {!list.length && <div className="empty"><b>{data.expenses.length ? 'Nothing matches' : 'No expenses yet'}</b>{data.expenses.length ? 'Try a different search.' : 'Tap + to log the first one.'}</div>}
       {[...groups.keys()].sort().reverse().map(d => {
@@ -64,7 +64,7 @@ function Row({ e, c }: { e: Expense; c: Calc }) {
   const cur = data.group.currency
   const foreign = e.currency !== cur
   const n = e.splits.length
-  const meta = [catLabel(e), fmtTime(e.spent_at), `${who(data, e.payer_id)} paid`].filter(Boolean).join(' · ')
+  const meta = [e.description, catLabel(e), fmtTime(e.spent_at), `${who(data, e.payer_id)} paid`].filter(Boolean).join(' · ')
   const split = e.split_mode === 'equal' ? `split ${n} way${n === 1 ? '' : 's'}` : 'custom split'
   return (
     <Link className="exp" to={`/g/${data.group.id}/expense/${e.id}`}>

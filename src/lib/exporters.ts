@@ -81,14 +81,14 @@ export async function buildXlsx(ctx: Ctx): Promise<Blob> {
   })
   sheet('Why (breakdown)', why, [14, 70, 18], [3])
 
-  const ex: unknown[][] = [['Date', 'Time', 'Vendor', 'Location', 'Category', 'Notes', 'Amount', 'Currency', `Settled (${cur})`, 'Rate used', `Amount (${cur})`, 'Status', 'Paid by', 'Split', 'Receipts']]
+  const ex: unknown[][] = [['Date', 'Time', 'Vendor', 'Description', 'Location', 'Category', 'Notes', 'Amount', 'Currency', `Settled (${cur})`, 'Rate used', `Amount (${cur})`, 'Status', 'Paid by', 'Split', 'Receipts']]
   sortedExpenses(data).forEach(e => {
     const c = R.calc[e.id]
     const rate = e.currency === cur ? '' : c.status === 'confirmed' && e.amount > 0 ? Number(e.settled_amount) / e.amount : data.rates[e.currency] ?? ''
-    ex.push([e.spent_on, e.spent_at?.slice(0, 5) ?? '', e.vendor, e.location, e.category ? catLabel(e) : '', e.notes, e.amount, e.currency, e.settled_amount ?? '', rate, c.minor == null ? '' : M(c.minor), statusText(c.status), nm(e.payer_id), splitText(data, e.id), e.receipts.length])
+    ex.push([e.spent_on, e.spent_at?.slice(0, 5) ?? '', e.vendor, e.description ?? '', e.location, e.category ? catLabel(e) : '', e.notes, e.amount, e.currency, e.settled_amount ?? '', rate, c.minor == null ? '' : M(c.minor), statusText(c.status), nm(e.payer_id), splitText(data, e.id), e.receipts.length])
   })
-  const s4 = sheet('Expenses', ex, [12, 8, 24, 20, 14, 28, 12, 9, 14, 10, 14, 22, 14, 44, 9]); bold(s4, 1)
-  s4.getColumn(7).numFmt = '#,##0.00'; s4.getColumn(9).numFmt = money; s4.getColumn(11).numFmt = money
+  const s4 = sheet('Expenses', ex, [12, 8, 24, 28, 20, 14, 28, 12, 9, 14, 10, 14, 22, 14, 44, 9]); bold(s4, 1)
+  s4.getColumn(8).numFmt = '#,##0.00'; s4.getColumn(10).numFmt = money; s4.getColumn(12).numFmt = money
 
   // Each person's share of every transaction (group currency), so the whole split is auditable.
   const shr: unknown[][] = [['Date', 'Vendor', `Total (${cur})`, 'Status', 'Paid by', ...data.travelers.map(t => t.name)]]
@@ -161,7 +161,7 @@ export async function buildPdf(ctx: Ctx): Promise<Blob> {
   H('All transactions')
   tbl(['Date', 'Vendor / details', 'Paid by', 'Original', 'In ' + cur, 'Split', 'Rcpt'], sortedExpenses(data).map(e => {
     const c = R.calc[e.id]
-    const details = [e.vendor, [e.category ? catLabel(e) : '', e.location].filter(Boolean).join(' - '), e.notes].filter(Boolean).join('\n')
+    const details = [e.vendor, e.description, [e.category ? catLabel(e) : '', e.location].filter(Boolean).join(' - '), e.notes].filter(Boolean).join('\n')
     const split = e.split_mode === 'equal' ? 'Equal: ' + e.splits.map(s => nm(s.traveler_id)).join(', ') : e.splits.map(s => `${nm(s.traveler_id)} ${s.value}${e.split_mode === 'percent' ? '%' : e.split_mode === 'exact' ? ' ' + e.currency : ' sh'}`).join(', ')
     const inCur = c.minor == null ? 'no rate' : A(c.minor) + (c.status === 'estimated' ? ' (est.)' : '')
     return [e.spent_on + (e.spent_at ? '\n' + e.spent_at.slice(0, 5) : ''), details, nm(e.payer_id), `${fmtPlain(toMinor(e.amount, e.currency), e.currency)} ${e.currency}`, inCur, split, e.receipts.length ? String(e.receipts.length) : '-']

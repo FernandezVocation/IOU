@@ -118,7 +118,7 @@ svg.i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;stro
 .rate{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;margin:10px 0}
 .auth{max-width:420px;margin:0 auto;padding:48px 20px}
 .auth h1{font:700 32px/1.1 var(--display);margin:0 0 6px;letter-spacing:-.01em}
-.glist a{display:flex;justify-content:space-between;align-items:center;gap:12px;text-decoration:none;color:var(--ink)}
+.glist a{display:flex;justify-content:flex-start;align-items:center;gap:12px;text-decoration:none;color:var(--ink)}
 .glist .nm{font-weight:600;font-size:17px;overflow-wrap:anywhere}
 .code{font:600 13px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft);border-radius:8px;padding:8px 10px;overflow-wrap:anywhere}
 .radio{display:flex;align-items:center;gap:10px;min-height:44px;padding:4px 0}
@@ -205,3 +205,9 @@ details.pair.me summary{font-weight:700}
 .top .gh{display:flex;align-items:center;gap:12px}
 .chip .gicon{vertical-align:-4px}
 .gline{display:inline-flex;align-items:center;gap:7px}
+
+/* Theme control: a small, quiet text row rather than a panel */
+.themebar{display:flex;align-items:center;justify-content:center;gap:4px;margin:18px 0 6px;font-size:12px;color:var(--muted)}
+.themebar span{margin-right:4px}
+.themebar button{border:0;background:transparent;color:var(--muted);font-size:12px;padding:4px 8px;min-height:28px;border-radius:999px}
+.themebar button[aria-pressed=true]{background:var(--soft);color:var(--ink);font-weight:600}

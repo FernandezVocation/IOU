@@ -91,7 +91,7 @@ export default function SharedGroupView({ trip, token, at, stale, onRefresh }: {
                 return (
                   <details className="pair" key={e.id}>
                     <summary>
-                      <span>{e.vendor || 'Untitled'}<br /><span className="muted small">{[catLabel(e), fmtTime(e.spent_at), `${name(e.payer_id)} paid`].filter(Boolean).join(' · ')}</span></span>
+                      <span>{e.vendor || 'Untitled'}<br /><span className="muted small">{[e.description, catLabel(e), fmtTime(e.spent_at), `${name(e.payer_id)} paid`].filter(Boolean).join(' · ')}</span></span>
                       <span>{fmtMoney(toMinor(e.amount, e.currency), e.currency)}</span>
                     </summary>
                     <div className="why">
@@ -154,7 +154,7 @@ export default function SharedGroupView({ trip, token, at, stale, onRefresh }: {
           {!withReceipts.length && <div className="empty"><b>No receipts attached</b></div>}
           {withReceipts.map(e => (
             <div className="panel" key={e.id}>
-              <div className="ln" style={{ borderTop: 0 }}><span><b>{e.vendor || 'Untitled'}</b><br /><span className="muted small">{fmtDate(e.spent_on)} · {name(e.payer_id)} paid</span></span><span className="a">{fmtMoney(toMinor(e.amount, e.currency), e.currency)}</span></div>
+              <div className="ln" style={{ borderTop: 0 }}><span><b>{e.vendor || 'Untitled'}</b><br /><span className="muted small">{[e.description, fmtDate(e.spent_on)].filter(Boolean).join(' · ')} · {name(e.payer_id)} paid</span></span><span className="a">{fmtMoney(toMinor(e.amount, e.currency), e.currency)}</span></div>
               <Thumbs e={e} />
             </div>
           ))}

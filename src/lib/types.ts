@@ -48,6 +48,8 @@ export interface Expense {
   spent_on: string
   spent_at: string | null
   vendor: string
+  /** What it was for, e.g. "Florence to Rome" (the vendor is "Italo"). */
+  description?: string
   location: string
   category: string
   /** Optional second level under the category ("Food" › "Dinner"). */
