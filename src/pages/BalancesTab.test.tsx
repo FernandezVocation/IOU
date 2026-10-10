@@ -83,3 +83,27 @@ describe('the "Received" tick box', () => {
     expect(screen.getByText(/Confirmed by You on/)).toBeTruthy()
   })
 })
+
+describe('sorting who pays whom', () => {
+  it('starts itemized and largest-first, with no group headings', () => {
+    mount(data([], 'alex', true))
+    expect(screen.getByText('Itemized').getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByText('Largest first').getAttribute('aria-pressed')).toBe('true')
+    expect(document.querySelectorAll('.day').length).toBe(0)
+  })
+  it('by person owed: one heading per creditor with their total', () => {
+    mount(data([], 'alex', true))
+    fireEvent.click(screen.getByText('By person owed'))
+    expect(screen.getByText(/You are owed CAD 200\.00/)).toBeTruthy()
+    expect(screen.getByText('2 payments')).toBeTruthy()
+  })
+  it('by person owing: one heading per debtor, in either payment view', () => {
+    mount(data([], 'alex', true))
+    fireEvent.click(screen.getByText('By person owing'))
+    expect(screen.getByText(/Sam owes CAD 100\.00/)).toBeTruthy(); expect(screen.getByText(/Jordan owes CAD 100\.00/)).toBeTruthy()
+    fireEvent.click(screen.getByText('Fewest payments'))
+    expect(screen.getByText(/Sam owes CAD 100\.00/)).toBeTruthy()
+    fireEvent.click(screen.getByText('By person owed'))
+    expect(screen.getByText(/You are owed CAD 200\.00/)).toBeTruthy()
+  })
+})

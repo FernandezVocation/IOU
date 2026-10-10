@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { computeLedger, type LedgerResult, type Pair, type PairLine } from '../lib/ledger'
@@ -42,7 +42,21 @@ export default function BalancesTab() {
   const cur = data.group.currency
   const me = user?.id ?? ''
   const [includeEst, setIncludeEst] = useState(true)
+  // Group a list of pairs under the person owed, or the person owing, with a total on each heading.
+  const arrange = <T,>(items: T[], from: (x: T) => string, to: (x: T) => string, amt: (x: T) => number): Array<{ key: string; head: ReactNode; items: T[] }> => {
+    if (sortBy === 'pair') return [{ key: '', head: null, items }]
+    const byId = new Map<string, T[]>()
+    for (const x of items) { const id = sortBy === 'owed' ? to(x) : from(x); byId.set(id, [...(byId.get(id) ?? []), x]) }
+    return [...byId].map(([id, list]) => {
+      const total = list.reduce((a, x) => a + amt(x), 0)
+      return { id, total, list }
+    }).sort((a, b) => b.total - a.total || who(data, a.id).localeCompare(who(data, b.id))).map(({ id, total, list }) => {
+      const you = verbOwe(data, id) === 'owe'
+      return { key: id, items: list, head: <div className="day"><span>{who(data, id)} {sortBy === 'owed' ? (you ? 'are owed' : 'is owed') : verbOwe(data, id)} {fmtMoney(total, cur)}</span><span>{list.length} {list.length === 1 ? 'payment' : 'payments'}</span></div> }
+    })
+  }
   const [pairMode, setPairMode] = useState<'itemized' | 'fewest'>('itemized')
+  const [sortBy, setSortBy] = useState<'pair' | 'owed' | 'owing'>('pair')
   const [open, setOpen] = useState<Set<string>>(new Set())
   const [statementId, setStatementId] = useState<string | null>(null)
   // null = closed; {} = new blank payment; {from,to} = suggested; {payment} = editing
@@ -115,12 +129,17 @@ export default function BalancesTab() {
           <button aria-pressed={pairMode === 'itemized'} onClick={() => setPairMode('itemized')}>Itemized</button>
           <button aria-pressed={pairMode === 'fewest'} onClick={() => setPairMode('fewest')}>Fewest payments</button>
         </div>
+        <div className="seg fit" role="group" aria-label="Sort by" style={{ margin: '0 0 8px' }}>
+          <button aria-pressed={sortBy === 'pair'} onClick={() => setSortBy('pair')}>Largest first</button>
+          <button aria-pressed={sortBy === 'owed'} onClick={() => setSortBy('owed')}>By person owed</button>
+          <button aria-pressed={sortBy === 'owing'} onClick={() => setSortBy('owing')}>By person owing</button>
+        </div>
         <div className="muted small">{pairMode === 'itemized' ? 'Each pair settles directly, so every amount traces to specific expenses.' : 'The fewest transfers that square everyone up. Amounts come from each person’s balance.'}</div>
 
         {pairMode === 'itemized' ? (
           <>
             {!R.pairs.length && <div className="empty"><b>All square</b>Nobody owes anybody right now.</div>}
-            {R.pairs.map(p => {
+            {arrange(R.pairs, p => p.debtor, p => p.creditor, p => p.net).map(g => <Fragment key={g.key}>{g.head}{g.items.map(p => {
               const k = 'p:' + p.debtor + '>' + p.creditor
               return (
                 <details className="pair" key={k} open={open.has(k)} onToggle={e => { if ((e.currentTarget as HTMLDetailsElement).open !== open.has(k)) toggle(k) }}>
@@ -132,7 +151,7 @@ export default function BalancesTab() {
                   </div>
                 </details>
               )
-            })}
+            })}</Fragment>)}
             {R.settledPairs.length > 0 && (
               <>
                 <div className="day"><span>Paid up</span><span>{R.settledPairs.length}</span></div>
@@ -151,7 +170,7 @@ export default function BalancesTab() {
         ) : (
           <>
             {!R.transfers.length && <div className="empty"><b>All square</b>Nobody owes anybody right now.</div>}
-            {R.transfers.map(t => {
+            {arrange(R.transfers, t => t.from, t => t.to, t => t.amount).map(g => <Fragment key={g.key}>{g.head}{g.items.map(t => {
               const k = 'f:' + t.from + '>' + t.to
               return (
                 <details className="pair" key={k} open={open.has(k)} onToggle={e => { if ((e.currentTarget as HTMLDetailsElement).open !== open.has(k)) toggle(k) }}>
@@ -165,7 +184,7 @@ export default function BalancesTab() {
                   </div>
                 </details>
               )
-            })}
+            })}</Fragment>)}
           </>
         )}
       </div>

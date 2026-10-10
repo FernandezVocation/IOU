@@ -119,3 +119,27 @@ describe('ledger', () => {
     expect(sum(kw.share)).toBe(1000)
   })
 })
+
+describe('Italy 2026: two expenses split seven ways', () => {
+  const ids = ['steve', 'shirley', 'lavi', 'sf', 'nitin', 'massy', 'sabina']
+  const tv = ids.map(T)
+  const split = Object.fromEntries(ids.map(i => [i, 1]))
+  const R = computeLedger({
+    currency: 'CAD', travelers: tv, payments: [], rates: {}, includeEstimates: true,
+    expenses: [exp('vatican', { amount: 700, payer_id: 'shirley', split }), exp('trevi', { amount: 1400, payer_id: 'steve', split })],
+  })
+  const pair = (d: string, c: string) => R.pairs.find(p => p.debtor === d && p.creditor === c)?.net
+  it('itemized: everyone owes Steve 200 and Shirley 100, and Shirley owes Steve 100 net', () => {
+    for (const p of ['lavi', 'sf', 'nitin', 'massy', 'sabina']) { expect(pair(p, 'steve')).toBe(20000); expect(pair(p, 'shirley')).toBe(10000) }
+    expect(pair('shirley', 'steve')).toBe(10000)
+    expect(pair('steve', 'shirley')).toBeUndefined()
+    expect(R.pairs).toHaveLength(11)
+  })
+  it('fewest payments: 6 transfers that still square everyone', () => {
+    expect(R.balance.steve).toBe(110000); expect(R.balance.shirley).toBe(40000)
+    expect(R.transfers).toHaveLength(6)
+    const net: Record<string, number> = { ...R.balance }
+    for (const t of R.transfers) { net[t.from] += t.amount; net[t.to] -= t.amount }
+    expect(Object.values(net).every(v => v === 0)).toBe(true)
+  })
+})
