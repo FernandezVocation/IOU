@@ -16,6 +16,7 @@ vi.mock('../lib/auth', () => ({ useAuth: () => ({ user: { id: 'u1' }, displayNam
 import { VaultContext } from './VaultShell'
 import VaultHome from './VaultHome'
 import VaultItemPage from './VaultItemPage'
+import VaultItemEditor from './VaultItemEditor'
 import { ToastProvider } from '../components/ui'
 import type { VaultData } from '../lib/useVault'
 import type { VaultItem } from '../lib/vault'
@@ -34,7 +35,7 @@ const data = (items: VaultItem[], o: Partial<VaultData> = {}): VaultData => ({
 })
 function mount(d: VaultData, at: string) {
   return render(<ToastProvider><MemoryRouter initialEntries={[at]}><VaultContext.Provider value={{ data: d, reload: async () => {} }}>
-    <Routes><Route path="/vault/:id" element={<VaultHome />} /><Route path="/vault/:id/item/:iid" element={<VaultItemPage />} /></Routes>
+    <Routes><Route path="/vault/:id" element={<VaultHome />} /><Route path="/vault/:id/item/new" element={<VaultItemEditor />} /><Route path="/vault/:id/item/:iid" element={<VaultItemPage />} /><Route path="/vault/:id/item/:iid/edit" element={<VaultItemEditor />} /></Routes>
   </VaultContext.Provider></MemoryRouter></ToastProvider>)
 }
 
@@ -103,5 +104,20 @@ describe('vault item', () => {
     mount(data([item({})], { isAdmin: true, myRole: 'admin', canChange: () => true }), '/vault/v/item/i1')
     expect(screen.getByRole('link', { name: 'Edit' })).toBeTruthy()
     expect(screen.getByRole('button', { name: /Remove from the vault/ })).toBeTruthy()
+  })
+})
+
+describe('vault item editor', () => {
+  it('opens a blank form at /item/new (not "Item not found")', () => {
+    mount(data([]), '/vault/v/item/new')
+    expect(screen.queryByText('Item not found')).toBeNull()
+    expect(screen.getByLabelText(/Title/i)).toBeTruthy()
+  })
+  it('edits an existing item, and says not found for an unknown one', () => {
+    mount(data([item({ created_by: 'u1' })], {}), '/vault/v/item/i1/edit')
+    expect((screen.getByLabelText(/Title/i) as HTMLInputElement).value).toBe('Italo · Florence to Rome')
+    cleanup()
+    mount(data([]), '/vault/v/item/zzz/edit')
+    expect(screen.getByText('Item not found')).toBeTruthy()
   })
 })

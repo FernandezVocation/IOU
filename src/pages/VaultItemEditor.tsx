@@ -16,7 +16,7 @@ export default function VaultItemEditor() {
   const nav = useNavigate()
   const toast = useToast()
   const v = data.vault
-  const existing = iid === 'new' ? undefined : data.items.find(i => i.id === iid)
+  const existing = !iid ? undefined : data.items.find(i => i.id === iid)
   const back = '/vault/' + v.id
   const picker = useRef<HTMLInputElement>(null)
 
@@ -43,7 +43,7 @@ export default function VaultItemEditor() {
   const stay = type === 'stay'
   const [touchedPriv, setTouchedPriv] = useState(!!existing)
 
-  if (iid !== 'new' && !existing) return <div className="app"><div className="empty"><b>Item not found</b></div><Link className="btn block" to={back}>Back to the vault</Link></div>
+  if (!!iid && !existing) return <div className="app"><div className="empty"><b>Item not found</b></div><Link className="btn block" to={back}>Back to the vault</Link></div>
   if (existing && !data.canChange(existing)) return <div className="app"><div className="notice err" role="alert">Only the person who added this, or a vault owner or co-admin, can change it.</div><Link className="btn block" to={`${back}/item/${existing.id}`}>Back</Link></div>
 
   function pickType(id: ItemType) {
