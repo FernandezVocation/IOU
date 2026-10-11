@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { arrange, directionsUrl, filterItems, mapUrl, typeOf, websiteUrl, whenLabel, type VaultItem } from './vault'
 
 const I = (o: Partial<VaultItem>): VaultItem => ({
-  id: o.title ?? 'x', vault_id: 'v', type: 'ticket', title: 'T', starts_on: null, starts_at: null, ends_on: null, ends_at: null,
+  id: o.title ?? 'x', vault_id: 'v', type: 'ticket', title: 'T', description: '', starts_on: null, starts_at: null, ends_on: null, ends_at: null,
   place: '', address: '', website: '', notes: '', private: false, created_by: 'u', files: [], ...o,
 })
 
@@ -57,6 +57,7 @@ describe('arranging', () => {
   it('filters by type and search', () => {
     expect(filterItems(items, 'ticket', '')).toHaveLength(2)
     expect(filterItems(items, 'all', 'passport')).toHaveLength(1)
+    expect(filterItems([I({ title: 'Italo', description: 'Venice to Florence' })], 'all', 'florence')).toHaveLength(1)
     expect(filterItems(items, 'all', 'florence')[0].title).toBe('Early train')
   })
   it('knows every type, and falls back for an unknown one', () => {

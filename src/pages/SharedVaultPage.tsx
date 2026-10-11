@@ -63,7 +63,7 @@ function Inner() {
             <button key={it.id} className="vrow vbtn" onClick={() => setOpen(v.items.find(x => x.id === it.id) ?? null)}>
               <span className="vtime">{it.starts_at ? whenLabel({ starts_on: null, starts_at: it.starts_at, ends_on: null, ends_at: null }) : '–'}</span>
               <TypeIcon type={it.type} size={38} />
-              <span className="vtx"><b>{it.title}</b><span>{[typeOf(it.type).label, it.place].filter(Boolean).join(' · ')}</span></span>
+              <span className="vtx"><b>{it.title}</b><span>{[it.description, typeOf(it.type).label, it.place].filter(Boolean).join(' · ')}</span></span>
             </button>
           ))}
         </section>
@@ -75,6 +75,7 @@ function Inner() {
           <div className="sheet" role="dialog" aria-modal="true" aria-label={open.title}>
             <div className="in">
               <header><span /><h2>{open.title}</h2><button className="btn small" onClick={() => setOpen(null)}>Close</button></header>
+              {open.description && <div style={{ fontWeight: 600 }}>{open.description}</div>}
               <div className="sub">{typeOf(open.type).label} · {whenLabel(open)}</div>
               {(map || dir || site) && <div className="vlinks">
                 {map && <a className="btn" href={map} target="_blank" rel="noopener noreferrer">Map</a>}

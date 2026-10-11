@@ -24,7 +24,7 @@ import type { VaultItem } from '../lib/vault'
 afterEach(cleanup)
 
 const item = (o: Partial<VaultItem>): VaultItem => ({
-  id: 'i1', vault_id: 'v', type: 'ticket', title: 'Italo · Florence to Rome', starts_on: '2026-10-10', starts_at: '09:10:00', ends_on: null, ends_at: null,
+  id: 'i1', vault_id: 'v', type: 'ticket', title: 'Italo', description: 'Venice to Florence', starts_on: '2026-10-10', starts_at: '09:10:00', ends_on: null, ends_at: null,
   place: 'Florence', address: 'Piazza della Stazione', website: 'italotreno.it', notes: '', private: false, created_by: 'u2',
   files: [{ id: 'f1', item_id: 'i1', path: 'v/i1/qr.png', name: 'qr.png', mime: 'image/png', label: 'Adult 1' }], ...o,
 })
@@ -43,6 +43,7 @@ describe('vault list', () => {
   const items = [item({}), item({ id: 'i2', title: 'Hotel Roma', type: 'stay', starts_on: '2026-10-10', starts_at: '14:00:00', place: 'Rome', files: [] }), item({ id: 'i3', title: 'Passport', type: 'document', starts_on: null, starts_at: null, place: '', address: '', files: [] })]
   it('groups by day with the time shown, and an undated section', () => {
     mount(data(items), '/vault/v')
+    expect(screen.getAllByText(/Venice to Florence/).length).toBeGreaterThan(0)
     expect(screen.getByRole('region', { name: /Oct 10/ })).toBeTruthy()
     expect(screen.getByRole('region', { name: 'No date' })).toBeTruthy()
     expect(screen.getByText(/9:10/)).toBeTruthy()
@@ -60,7 +61,7 @@ describe('vault list', () => {
   })
   it('offers Directions on rows that have a place, and only owners and co-admins get Share', () => {
     mount(data(items), '/vault/v')
-    expect((screen.getByLabelText('Directions to Italo · Florence to Rome') as HTMLAnchorElement).href).toContain('google.com/maps/dir')
+    expect((screen.getByLabelText('Directions to Italo') as HTMLAnchorElement).href).toContain('google.com/maps/dir')
     expect(screen.queryByLabelText('Directions to Passport')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Read-only links' })).toBeNull()
     cleanup()
@@ -92,6 +93,7 @@ describe('vault item', () => {
     const a = screen.getByRole('link', { name: 'Add as expense' }) as HTMLAnchorElement
     expect(a.getAttribute('href')).toContain('/g/g1/expense/new?')
     expect(a.getAttribute('href')).toContain('vendor=Italo')
+    expect(a.getAttribute('href')).toContain('description=Venice+to+Florence')
     cleanup()
     mount(data([item({ private: true, created_by: 'u1' })]), '/vault/v/item/i1')
     expect(screen.queryByRole('link', { name: 'Add as expense' })).toBeNull()
@@ -108,6 +110,10 @@ describe('vault item', () => {
 })
 
 describe('vault item editor', () => {
+  it('has a Description field, saved with the item', () => {
+    mount(data([]), '/vault/v/item/new')
+    expect(screen.getByLabelText('Description')).toBeTruthy()
+  })
   it('opens a blank form at /item/new (not "Item not found")', () => {
     mount(data([]), '/vault/v/item/new')
     expect(screen.queryByText('Item not found')).toBeNull()
@@ -115,7 +121,7 @@ describe('vault item editor', () => {
   })
   it('edits an existing item, and says not found for an unknown one', () => {
     mount(data([item({ created_by: 'u1' })], {}), '/vault/v/item/i1/edit')
-    expect((screen.getByLabelText(/Title/i) as HTMLInputElement).value).toBe('Italo · Florence to Rome')
+    expect((screen.getByLabelText(/Title/i) as HTMLInputElement).value).toBe('Italo')
     cleanup()
     mount(data([]), '/vault/v/item/zzz/edit')
     expect(screen.getByText('Item not found')).toBeTruthy()

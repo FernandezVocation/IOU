@@ -2,7 +2,7 @@ import { supabase } from './supabase'
 import type { ItemType } from './vault'
 
 export interface SharedVaultItem {
-  id: string; type: ItemType; title: string; starts_on: string | null; starts_at: string | null; ends_on: string | null; ends_at: string | null
+  id: string; type: ItemType; title: string; description: string; starts_on: string | null; starts_at: string | null; ends_on: string | null; ends_at: string | null
   place: string; address: string; website: string; notes: string; file_count: number
 }
 export interface SharedVault { vault: { name: string; icon: string | null; color: string | null }; label: string; items: SharedVaultItem[] }

@@ -55,7 +55,7 @@ export default function VaultItemPage() {
     nav(back, { replace: true })
   }
 
-  const expenseQs = new URLSearchParams({ vendor: it.title, ...(it.place ? { description: it.place } : {}), ...(it.starts_on ? { date: it.starts_on } : {}), ...(it.starts_at ? { time: it.starts_at.slice(0, 5) } : {}) }).toString()
+  const expenseQs = new URLSearchParams({ vendor: it.title, ...((it.description || it.place) ? { description: it.description || it.place } : {}), ...(it.starts_on ? { date: it.starts_on } : {}), ...(it.starts_at ? { time: it.starts_at.slice(0, 5) } : {}) }).toString()
 
   return (
     <div className="app">
@@ -66,6 +66,7 @@ export default function VaultItemPage() {
             <TypeIcon type={it.type} size={44} />
             <div>
               <h1>{it.title}</h1>
+              {it.description && <div style={{ fontWeight: 600, marginTop: 2 }}>{it.description}</div>}
               <div className="sub">{t.label}{when ? ` · ${when}` : ''}{it.private ? ' · Only me' : ''}</div>
             </div>
           </div>

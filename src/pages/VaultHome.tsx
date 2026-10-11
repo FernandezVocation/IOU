@@ -14,7 +14,7 @@ function Row({ vid, it, by }: { vid: string; it: VaultItem; by: Arrange }) {
   const t = typeOf(it.type)
   const dir = directionsUrl(it)
   const shortDate = it.starts_on ? fmtDate(it.starts_on).replace(/^[^,]+, /, '') : ''
-  const sub = [by === 'type' ? '' : t.label, by === 'place' ? '' : it.place, it.files.length ? `${it.files.length} file${it.files.length === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · ')
+  const sub = [it.description, by === 'type' ? '' : t.label, by === 'place' ? '' : it.place, it.files.length ? `${it.files.length} file${it.files.length === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · ')
   return (
     <div className="vrow">
       <Link className="vmain" to={`/vault/${vid}/item/${it.id}`}>

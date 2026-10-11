@@ -18,7 +18,7 @@ export const typeOf = (id: string) => TYPES.find(t => t.id === id) ?? TYPES[TYPE
 export interface VaultRow { id: string; name: string; icon: string | null; color: string | null; group_id: string | null; invite_code: string; created_at: string }
 export interface VaultFile { id: string; item_id: string; path: string; name: string; mime: string; label: string }
 export interface VaultItem {
-  id: string; vault_id: string; type: ItemType; title: string
+  id: string; vault_id: string; type: ItemType; title: string; description: string
   starts_on: string | null; starts_at: string | null; ends_on: string | null; ends_at: string | null
   place: string; address: string; website: string; notes: string; private: boolean; created_by: string
   files: VaultFile[]
@@ -81,7 +81,7 @@ export function arrange(items: VaultItem[], by: Arrange): Section[] {
 export function filterItems(items: VaultItem[], type: 'all' | ItemType, q: string): VaultItem[] {
   const s = q.trim().toLowerCase()
   return items.filter(i => (type === 'all' || i.type === type)
-    && (!s || [i.title, i.place, i.address, i.notes, typeOf(i.type).label].join(' ').toLowerCase().includes(s)))
+    && (!s || [i.title, i.description, i.place, i.address, i.notes, typeOf(i.type).label].join(' ').toLowerCase().includes(s)))
 }
 
 /** Shrink phone photos before upload: long edge 2000px, JPEG. PDFs and small images pass through. */
