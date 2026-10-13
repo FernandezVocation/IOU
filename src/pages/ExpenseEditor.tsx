@@ -5,7 +5,9 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { COMMON_CURRENCIES, friendly, nowTime, todayStr } from '../lib/format'
 import { allocate, currencyDigits, fmtMoney, fromMinor, isValidCurrency, parseNum, toMinor } from '../lib/money'
-import type { Expense, Receipt, SplitMode } from '../lib/types'
+import type { Expense, ExpenseStatus, Receipt, SplitMode } from '../lib/types'
+import { STATUSES, useGroupVaultItems } from '../lib/expenseExtras'
+import TypeIcon from '../components/TypeIcon'
 import { Avatar, ConfirmDialog, useToast } from '../components/ui'
 import CategoryPicker from '../components/CategoryPicker'
 import { useAuth } from '../lib/auth'
@@ -18,6 +20,7 @@ interface Form {
   date: string; time: string; vendor: string; description: string; location: string; category: string; subcategory: string; notes: string
   amount: string; foreign: boolean; pick: string; otherCur: string; settled: string; charged: string
   payerId: string; mode: SplitMode; entries: Record<string, string>
+  status: ExpenseStatus; itemId: string
 }
 
 const LAST_FOREIGN = 'tl_last_foreign_currency'
@@ -52,6 +55,7 @@ export default function ExpenseEditor() {
   const { user } = useAuth()
   const [confirmDel, setConfirmDel] = useState(false)
   const g = data.group, base = g.currency
+  const { items: vaultItems, vaultId } = useGroupVaultItems(g.id, true)
   const spending = g.spending_currency && g.spending_currency !== base ? g.spending_currency : null   // set only when expenses are usually entered in another currency
   const existing: Expense | undefined = eid === 'new' ? undefined : data.expenses.find(e => e.id === eid)
   const back = '/g/' + g.id
@@ -82,6 +86,7 @@ export default function ExpenseEditor() {
       charged: existing?.charged_amount != null ? String(existing.charged_amount) : '',
       payerId: existing?.payer_id ?? data.me?.id ?? data.travelers[0]?.id ?? '',
       mode: existing?.split_mode ?? 'equal',
+      status: existing?.status ?? 'final', itemId: existing ? (existing.vault_item_id ?? '') : (qs.get('item') ?? ''),
       entries: existing ? Object.fromEntries(existing.splits.map(s => [s.traveler_id, String(s.value)])) : Object.fromEntries(data.travelers.map(t => [t.id, '1'])),
     })
     setKept(existing?.receipts ?? [])
@@ -177,7 +182,7 @@ export default function ExpenseEditor() {
     const splits = ids.map(i => ({ traveler_id: i, value: f.mode === 'equal' ? 1 : parseNum(f.entries[i]) }))
     const { error } = await supabase.rpc('save_expense', {
       p_id: id, p_group: g.id,
-      p: { spent_on: f.date, spent_at: f.time || '', vendor: f.vendor.trim(), description: f.description.trim(), location: f.location.trim(), category: f.category.trim(), subcategory: f.category.trim() ? f.subcategory.trim() : '', notes: f.notes.trim(), amount: amountNum, currency: cur, settled_amount: settled, charged_amount: charged?.amount ?? null, charged_currency: charged?.currency ?? null, payer_id: f.payerId, split_mode: f.mode },
+      p: { spent_on: f.date, spent_at: f.time || '', vendor: f.vendor.trim(), description: f.description.trim(), location: f.location.trim(), category: f.category.trim(), subcategory: f.category.trim() ? f.subcategory.trim() : '', notes: f.notes.trim(), amount: amountNum, currency: cur, settled_amount: settled, charged_amount: charged?.amount ?? null, charged_currency: charged?.currency ?? null, payer_id: f.payerId, split_mode: f.mode, status: f.status, vault_item_id: f.itemId || null },
       p_splits: splits,
     })
     if (error) { toast(friendly(error)); setSaving(false); return }
@@ -344,6 +349,26 @@ export default function ExpenseEditor() {
           {(f.mode === 'percent' || f.mode === 'exact') && <div style={{ marginTop: 8 }}><button className="btn small" type="button" onClick={() => setForm(p => (p ? { ...p, entries: evenSplit(p.mode, p.entries) } : p))}>Split evenly</button></div>}
           <div className={'status ' + (v.ok ? 'ok' : 'bad')}>{v.msg}</div>
         </div>
+
+        <div className="lbl" id="stlbl">Status</div>
+        <div className="seg" role="group" aria-labelledby="stlbl">
+          {STATUSES.map(s => <button key={s.id} type="button" aria-pressed={f.status === s.id} onClick={() => set('status', s.id)}>{s.label}</button>)}
+        </div>
+        <div className="muted small" style={{ marginTop: 6 }}>{STATUSES.find(s => s.id === f.status)?.help} Only a label: it does not change any amount or balance.</div>
+
+        {(vaultItems.length > 0 || f.itemId) && (
+          <>
+            <label className="lbl" htmlFor="vitem">Vault item</label>
+            <select id="vitem" value={f.itemId} onChange={e => set('itemId', e.target.value)}>
+              <option value="">None</option>
+              {vaultItems.map(i => <option key={i.id} value={i.id}>{i.title}{i.description ? ' · ' + i.description : ''}</option>)}
+              {f.itemId && !vaultItems.some(i => i.id === f.itemId) && <option value={f.itemId}>(a vault item you cannot see)</option>}
+            </select>
+            {(() => { const it = vaultItems.find(i => i.id === f.itemId); return it ? (
+              <div className="vitem"><TypeIcon type={it.type} size={34} /><span className="vtx"><b>{it.title}</b>{it.description && <div className="muted small">{it.description}</div>}</span>{vaultId && <Link className="btn small" to={`/vault/${vaultId}/item/${it.id}`}>Open</Link>}</div>
+            ) : null })()}
+          </>
+        )}
 
         <label className="lbl" htmlFor="notes">Notes</label>
         <textarea id="notes" maxLength={1000} value={f.notes} onChange={e => set('notes', e.target.value)} />

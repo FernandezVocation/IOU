@@ -5,6 +5,8 @@ import { fmtMoney, toMinor } from '../lib/money'
 import { fmtDate, fmtTime } from '../lib/format'
 import { catLabel } from '../lib/categories'
 import type { Expense } from '../lib/types'
+import { statusLabel, useGroupVaultItems, type LinkedItem } from '../lib/expenseExtras'
+import TypeIcon from '../components/TypeIcon'
 import { useGroup, who } from './GroupShell'
 
 const clipIcon = <svg className="i" viewBox="0 0 24 24" style={{ width: 14, height: 14 }}><path d="M21 11.5l-8.5 8.5a5 5 0 0 1-7-7L14 4.5a3.3 3.3 0 0 1 4.7 4.7L10 18a1.7 1.7 0 0 1-2.4-2.4L15 8" /></svg>
@@ -15,6 +17,8 @@ export default function ExpensesTab() {
   const [q, setQ] = useState('')
   const [needOnly, setNeedOnly] = useState(false)
   const R = useMemo(() => computeLedger({ currency: cur, travelers: data.travelers, expenses: data.expenses, payments: data.payments, rates: data.rates, includeEstimates: true }), [data, cur])
+  const { items: vaultItems } = useGroupVaultItems(data.group.id, data.expenses.some(e => !!e.vault_item_id))
+  const linked = useMemo(() => new Map(vaultItems.map(i => [i.id, i])), [vaultItems])
   const needs = data.expenses.filter(e => R.calc[e.id]?.status !== 'confirmed')
 
   if (!data.travelers.length) {
@@ -51,7 +55,7 @@ export default function ExpensesTab() {
         return (
           <div key={d}>
             <div className="day"><span>{fmtDate(d)}</span><span>{fmtMoney(tot, cur)}</span></div>
-            {items.map(e => <Row key={e.id} e={e} c={R.calc[e.id]} />)}
+            {items.map(e => <Row key={e.id} e={e} c={R.calc[e.id]} item={e.vault_item_id ? linked.get(e.vault_item_id) : undefined} />)}
           </div>
         )
       })}
@@ -59,7 +63,7 @@ export default function ExpensesTab() {
   )
 }
 
-function Row({ e, c }: { e: Expense; c: Calc }) {
+function Row({ e, c, item }: { e: Expense; c: Calc; item?: LinkedItem }) {
   const { data } = useGroup()
   const cur = data.group.currency
   const foreign = e.currency !== cur
@@ -68,7 +72,7 @@ function Row({ e, c }: { e: Expense; c: Calc }) {
   const split = e.split_mode === 'equal' ? `split ${n} way${n === 1 ? '' : 's'}` : 'custom split'
   return (
     <Link className="exp" to={`/g/${data.group.id}/expense/${e.id}`}>
-      <div className="v">{e.vendor || 'Untitled'}</div>
+      <div className="v">{e.vendor || 'Untitled'}{item && <span className="vlink" role="img" aria-label={`Linked to vault item: ${item.title}`} title={item.title}><TypeIcon type={item.type} size={20} /></span>}{e.status && e.status !== 'final' && <span className={'stchip st-' + e.status}>{statusLabel(e.status)}</span>}</div>
       <div className="amt">{fmtMoney(toMinor(e.amount, e.currency), e.currency)}</div>
       <div className="m">{meta}{e.receipts.length > 0 && <> · <span className="clip">{clipIcon}{e.receipts.length}</span></>}</div>
       {foreign ? (c.status === 'confirmed' ? <div className="sb">{fmtMoney(c.minor as number, cur)}</div>

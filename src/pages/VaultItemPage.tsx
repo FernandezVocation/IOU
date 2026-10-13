@@ -55,7 +55,7 @@ export default function VaultItemPage() {
     nav(back, { replace: true })
   }
 
-  const expenseQs = new URLSearchParams({ vendor: it.title, ...((it.description || it.place) ? { description: it.description || it.place } : {}), ...(it.starts_on ? { date: it.starts_on } : {}), ...(it.starts_at ? { time: it.starts_at.slice(0, 5) } : {}) }).toString()
+  const expenseQs = new URLSearchParams({ item: it.id, vendor: it.title, ...((it.description || it.place) ? { description: it.description || it.place } : {}), ...(it.starts_on ? { date: it.starts_on } : {}), ...(it.starts_at ? { time: it.starts_at.slice(0, 5) } : {}) }).toString()
 
   return (
     <div className="app">

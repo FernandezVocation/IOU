@@ -42,6 +42,8 @@ export interface Receipt {
   name: string | null
   size_bytes: number | null
 }
+export type ExpenseStatus = 'final' | 'estimate' | 'pending' | 'needs_info'
+
 export interface Expense {
   id: string
   group_id: string
@@ -50,6 +52,10 @@ export interface Expense {
   vendor: string
   /** What it was for, e.g. "Florence to Rome" (the vendor is "Italo"). */
   description?: string
+  /** A label only: final (default), estimate, pending or needs_info. */
+  status?: ExpenseStatus
+  /** The vault item this expense is for, if any. */
+  vault_item_id?: string | null
   location: string
   category: string
   /** Optional second level under the category ("Food" › "Dinner"). */

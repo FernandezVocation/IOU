@@ -265,3 +265,12 @@ details.pair.me summary{font-weight:700}
 .qrview .qrsw button{min-height:44px;padding:0 16px;border-radius:12px;border:1px solid #cfd6d1;background:#fff;color:#111;font-weight:600}
 .qrview .qrsw button[aria-pressed=true]{background:#111;color:#fff;border-color:#111}
 .qrview .qrnote{margin-top:16px;font-size:12px}
+
+/* Expense status label and vault link icon (added to the existing expense row) */
+.exp .vlink{display:inline-flex;vertical-align:middle;margin-left:7px}
+.stchip{display:inline-block;vertical-align:middle;margin-left:7px;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:600;line-height:1.5;border:1px solid currentColor}
+.stchip.st-estimate{color:var(--est);background:var(--est-bg)}
+.stchip.st-pending{color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.stchip.st-needs_info{color:var(--owe);background:color-mix(in srgb,var(--owe) 10%,transparent)}
+.vitem{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);margin-top:6px}
+.vitem .vtx{flex:1;min-width:0}
