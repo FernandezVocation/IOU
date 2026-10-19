@@ -67,6 +67,7 @@ export default function ItineraryHome() {
             </div>
           </div>
           <div className="vtools">
+            <Link className="btn small" to={`/diary?trip=${it.id}`} aria-label="Trip diary">Diary</Link>
             <button className="btn small" onClick={() => setSheet('export')} aria-label="Export the plan">Export</button>
             {data.isAdmin && <button className="btn small" onClick={() => setSheet('share')} aria-label="Read-only links">Share</button>}
             <button className="btn small" onClick={() => setSheet('settings')} aria-label="Itinerary settings">People</button>

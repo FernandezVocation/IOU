@@ -279,3 +279,11 @@ details.pair.me summary{font-weight:700}
 .stchip.st-needs_info{color:var(--owe);background:color-mix(in srgb,var(--owe) 10%,transparent)}
 .vitem{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);margin-top:6px}
 .vitem .vtx{flex:1;min-width:0}
+
+/* Diary */
+.vgallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin:10px 0}
+.vgallery img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;display:block}
+.vthumb{position:relative;display:block}
+.vthumb button{position:absolute;top:4px;right:4px;width:26px;height:26px;border-radius:13px;border:0;background:rgba(0,0,0,.65);color:#fff;font-size:16px;line-height:1;cursor:pointer}
+.chk{display:flex;gap:8px;align-items:center;margin-top:10px}
+.chk input{width:auto}

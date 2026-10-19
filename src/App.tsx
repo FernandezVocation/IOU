@@ -33,6 +33,9 @@ import ItineraryHome from './pages/ItineraryHome'
 import ItineraryItemPage from './pages/ItineraryItemPage'
 import ItineraryItemEditor from './pages/ItineraryItemEditor'
 import SharedItineraryPage from './pages/SharedItineraryPage'
+import DiaryPage from './pages/DiaryPage'
+import DiaryEntryPage from './pages/DiaryEntryPage'
+import DiaryEditor from './pages/DiaryEditor'
 
 /** Old links to the Trip tab now land on group settings. */
 function ToSettings() { const { id = '' } = useParams(); return <Navigate to={`/g/${id}/settings`} replace /> }
@@ -87,6 +90,10 @@ export default function App() {
             <Route path="item/:iid" element={<ItineraryItemPage />} />
             <Route path="item/:iid/edit" element={<ItineraryItemEditor />} />
           </Route>
+          <Route path="/diary" element={<DiaryPage />} />
+          <Route path="/diary/new" element={<DiaryEditor />} />
+          <Route path="/diary/:id" element={<DiaryEntryPage />} />
+          <Route path="/diary/:id/edit" element={<DiaryEditor />} />
           <Route path="/join/:code" element={<JoinPage />} />
           <Route path="/g/:id" element={<GroupProvider />}>
             <Route element={<TabsShell />}>

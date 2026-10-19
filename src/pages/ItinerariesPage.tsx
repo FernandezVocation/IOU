@@ -72,6 +72,7 @@ export default function ItinerariesPage() {
         ))}
       </div>
       <Link className="btn primary block" to="/itineraries/new" style={{ marginTop: 14 }}>Create an itinerary</Link>
+      <Link className="btn block" to="/diary" style={{ marginTop: 8 }}>My diary</Link>
       <div className="sect">
         <h2>Join an itinerary</h2>
         <form onSubmit={join} className="prow">
