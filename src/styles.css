@@ -288,3 +288,13 @@ details.pair.me summary{font-weight:700}
 .vthumb button{position:absolute;top:4px;right:4px;width:26px;height:26px;border-radius:13px;border:0;background:rgba(0,0,0,.65);color:#fff;font-size:16px;line-height:1;cursor:pointer}
 .chk{display:flex;gap:8px;align-items:center;margin-top:10px}
 .chk input{width:auto}
+.pv.priv{color:var(--accent-ink);background:var(--accent)}
+/* Header that stacks: title on its own full-width row, tools underneath */
+.top.wrapped{flex-wrap:wrap;align-items:flex-start}
+.top.wrapped > div:first-child{flex:1 1 100%;min-width:0}
+.top.wrapped .vtools{flex:1 1 100%;flex-wrap:wrap}
+.top .gh > div{min-width:0}
+.crumbs{display:flex;flex-wrap:wrap;gap:2px 14px}
+.frow{display:flex;gap:8px;align-items:center;margin-top:10px}
+.frow .inp{flex:1;min-width:0;margin:0}
+.fpanel{margin-top:8px}

@@ -30,7 +30,7 @@ const item = (o: Partial<ItineraryItem>): ItineraryItem => ({
 })
 const data = (items: ItineraryItem[], o: Partial<ItineraryData> = {}): ItineraryData => ({
   itinerary: { id: 'it', name: 'Italy 2026', icon: null, color: null, group_id: 'g1', vault_id: 'v1', invite_code: 'abc', created_at: '' },
-  items, people: [{ user_id: 'u1', role: 'owner', name: 'Ann' }, { user_id: 'u2', role: 'member', name: 'Ed' }], groupNames: ['Nonna'], groupName: 'Italy', vaultName: 'Italy docs', spend: null,
+  items, people: [{ user_id: 'u1', role: 'owner', name: 'Ann' }, { user_id: 'u2', role: 'member', name: 'Ed' }], groupNames: ['Nonna'], groupName: 'Italy', vaultName: 'Italy docs', spend: null, tickets: new Set<string>(),
   myRole: 'member', userId: 'u1', isAdmin: false, isOwner: false, canChange: i => i.created_by === 'u1', ...o,
 })
 function mount(d: ItineraryData, at: string) {
@@ -48,15 +48,22 @@ describe('itinerary timeline', () => {
     expect(screen.getByText(/9:10/)).toBeTruthy()
   })
   it('filters by category and by person, and shows a ticket icon for linked items', () => {
-    mount(data([...items, item({ id: 'i4', title: 'Ticketed', vault_item_id: 'vi' })]), '/itinerary/it')
+    mount(data([...items, item({ id: 'i4', title: 'Ticketed', vault_item_id: 'vi' }), item({ id: 'i5', title: 'Hidden ticket', vault_item_id: 'private-to-someone' })], { tickets: new Set(['vi']) }), '/itinerary/it')
+    // Only the ticket the viewer can open gets the icon; a link to something they cannot see shows nothing.
     expect(screen.getAllByLabelText('Has a vault ticket').length).toBe(1)
+    // Filters stay out of the way until asked for.
+    expect(screen.queryByRole('button', { name: 'Stays' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
     fireEvent.click(screen.getByRole('button', { name: 'Stays' }))
+    expect(screen.getByRole('button', { name: 'Filters (1)' })).toBeTruthy()
     expect(screen.queryByText('Italo')).toBeNull()
     expect(screen.getByText('Hotel Roma')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'All' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Ed' }))
+    fireEvent.change(screen.getByLabelText('Person'), { target: { value: 'Ed' } })
     expect(screen.queryByText('Hotel Roma')).toBeNull()
     expect(screen.getByText('Italo')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }))
+    expect(screen.getByText('Hotel Roma')).toBeTruthy()
   })
   it('shows the description (a flight or train number) as a highlighted badge', () => {
     mount(data(items), '/itinerary/it')

@@ -28,6 +28,35 @@ afterEach(cleanup)
 const vault = (o: Record<string, unknown>) => ({ id: 'v1', name: 'Italy docs', icon: null, color: null, group_id: null, created_at: '', personal: false, ...o })
 const mountList = () => render(<ToastProvider><MemoryRouter initialEntries={['/vaults']}><Routes><Route path="/vaults" element={<VaultsPage />} /><Route path="/vault/:id" element={<div>vault page</div>} /></Routes></MemoryRouter></ToastProvider>)
 
+describe('Vaults page: All items', () => {
+  const it_ = (o: Record<string, unknown>) => ({ id: 'a', vault_id: 'v1', type: 'ticket', title: 'Italo', description: 'Train 9405', starts_on: '2026-10-10', starts_at: '09:10:00', ends_on: null, ends_at: null, place: '', address: '', website: '', notes: '', private: false, created_by: 'u1', booking_ref: '', ...o })
+  const setup = () => {
+    tables.vaults = [vault({}), vault({ id: 'p1', name: 'My vault', personal: true })]
+    tables.vault_items = [it_({}), it_({ id: 'b', vault_id: 'p1', title: 'Passport', type: 'document', description: '', starts_on: null, starts_at: null })]
+  }
+  it('merges items from every vault and marks the ones from the private vault', async () => {
+    setup(); mountList()
+    fireEvent.click(await screen.findByRole('button', { name: 'All items' }))
+    expect(await screen.findByText('Italo')).toBeTruthy()
+    expect(screen.getByText('Passport')).toBeTruthy()
+    const marks = screen.getAllByTitle('In your private vault')
+    expect(marks).toHaveLength(1)
+    expect(marks[0].closest('b')?.textContent).toContain('Passport')
+    expect(screen.getByText('Train 9405').className).toContain('vdesc')
+  })
+  it('narrows to Group or Private with the same switch', async () => {
+    setup(); mountList()
+    fireEvent.click(await screen.findByRole('button', { name: 'All items' }))
+    await screen.findByText('Italo')
+    fireEvent.click(screen.getByRole('button', { name: 'Private' }))
+    expect(screen.queryByText('Italo')).toBeNull()
+    expect(screen.getByText('Passport')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Group' }))
+    expect(screen.getByText('Italo')).toBeTruthy()
+    expect(screen.queryByText('Passport')).toBeNull()
+  })
+})
+
 describe('Vaults page: Group, Private, Both', () => {
   it('shows My vault and the group vaults together by default, and filters', async () => {
     tables.vaults = [vault({}), vault({ id: 'p1', name: 'My vault', personal: true })]

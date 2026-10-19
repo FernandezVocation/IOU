@@ -7,10 +7,14 @@ import { Spinner } from '../components/ui'
 import TopNav from '../components/TopNav'
 import ThemeToggle from '../components/ThemeToggle'
 import GroupIcon from '../components/GroupIcon'
+import AllVaultItems from '../components/AllVaultItems'
 
 interface Row { id: string; name: string; icon: string | null; color: string | null; group_id: string | null; created_at: string; personal: boolean }
 type View = 'group' | 'private' | 'both'
 const readView = (): View => { try { const v = localStorage.getItem('iou.vaultView'); return v === 'group' || v === 'private' ? v : 'both' } catch { return 'both' } }
+
+type Layout = 'vaults' | 'items'
+const readLayout = (): Layout => { try { return localStorage.getItem('iou.vaultLayout') === 'items' ? 'items' : 'vaults' } catch { return 'vaults' } }
 
 export default function VaultsPage() {
   const nav = useNavigate()
@@ -22,6 +26,8 @@ export default function VaultsPage() {
   const [code, setCode] = useState('')
   const [view, setViewState] = useState<View>(readView)
   const [opening, setOpening] = useState(false)
+  const [layout, setLayoutState] = useState<Layout>(readLayout)
+  const setLayout = (l: Layout) => { setLayoutState(l); try { localStorage.setItem('iou.vaultLayout', l) } catch { /* storage unavailable */ } }
   const setView = (v: View) => { setViewState(v); try { localStorage.setItem('iou.vaultView', v) } catch { /* storage unavailable */ } }
   async function openPersonal() {
     setOpening(true)
@@ -77,10 +83,14 @@ export default function VaultsPage() {
       <div className="seg" role="group" aria-label="Which vaults">
         {([['both', 'Both'], ['group', 'Group'], ['private', 'Private']] as Array<[View, string]>).map(([k, l]) => <button key={k} aria-pressed={view === k} onClick={() => setView(k)}>{l}</button>)}
       </div>
-      {rows && showGroup && groupRows.length === 0 && (
+      <div className="seg" role="group" aria-label="Show" style={{ marginTop: 8 }}>
+        {([['vaults', 'Vaults'], ['items', 'All items']] as Array<[Layout, string]>).map(([k, l]) => <button key={k} aria-pressed={layout === k} onClick={() => setLayout(k)}>{l}</button>)}
+      </div>
+      {rows && layout === 'items' && <AllVaultItems vaults={rows.map(r => ({ id: r.id, name: r.name, personal: r.personal }))} view={view} />}
+      {rows && layout === 'vaults' && showGroup && groupRows.length === 0 && (
         <div className="empty"><b>No group vaults yet</b>A vault keeps tickets, passes, reservations and documents in one place. Create one, or paste an invite link below to join a friend’s.</div>
       )}
-      <div className="glist">
+      <div className="glist" hidden={layout === 'items'}>
         {rows && showPrivate && (mine
           ? (
             <div className="panel" key={mine.id}>

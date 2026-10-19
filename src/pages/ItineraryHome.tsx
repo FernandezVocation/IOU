@@ -13,7 +13,7 @@ import ItineraryExport from '../components/ItineraryExport'
 const pinIcon = <svg className="i" viewBox="0 0 24 24" width="18" height="18"><path d="M12 21s7-6.2 7-11a7 7 0 0 0-14 0c0 4.8 7 11 7 11z" /><circle cx="12" cy="10" r="2.5" /></svg>
 const ticketIcon = <svg className="i" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M3 8a2 2 0 0 0 0 4v0a2 2 0 0 1 0 4v2h18v-2a2 2 0 0 1 0-4 2 2 0 0 0 0-4V6H3z" /></svg>
 
-function Row({ iid, it, by, cost }: { iid: string; it: ItineraryItem; by: Arrange; cost?: string }) {
+function Row({ iid, it, by, cost, ticket }: { iid: string; it: ItineraryItem; by: Arrange; cost?: string; ticket: boolean }) {
   const dir = directionsUrl(it)
   const shortDate = it.starts_on ? fmtDate(it.starts_on).replace(/^[^,]+, /, '') : ''
   const route = it.from_place && it.to_place ? `${it.from_place} → ${it.to_place}` : ''
@@ -24,7 +24,7 @@ function Row({ iid, it, by, cost }: { iid: string; it: ItineraryItem; by: Arrang
         <span className="vtime">{it.starts_at ? fmtTime(it.starts_at) : '–'}<small>{by === 'date' ? '' : shortDate}</small></span>
         <CategoryIcon category={it.category} size={38} />
         <span className="vtx">
-          <b>{it.title}{it.vault_item_id && <span className="tkt" title="Has a vault ticket" aria-label="Has a vault ticket">{ticketIcon}</span>}{it.private && <em className="pv">Only me</em>}{cost && <em className="pv amt">{cost}</em>}</b>
+          <b>{it.title}{ticket && <span className="tkt" title="Has a vault ticket" aria-label="Has a vault ticket">{ticketIcon}</span>}{it.private && <em className="pv">Only me</em>}{cost && <em className="pv amt">{cost}</em>}</b>
           <span>{sub}</span>
         </span>
         {it.description && <span className="vdesc" title={it.description}>{it.description}</span>}
@@ -39,6 +39,7 @@ export default function ItineraryHome() {
   const [by, setBy] = useState<Arrange>('date')
   const [f, setF] = useState<Filters>(NO_FILTERS)
   const [amounts, setAmounts] = useState(() => { try { return localStorage.getItem('iou.itinAmounts') === '1' } catch { return false } })
+  const [showFilters, setShowFilters] = useState(false)
   const [sheet, setSheet] = useState<null | 'settings' | 'share' | 'export'>(null)
   const it = data.itinerary
 
@@ -49,16 +50,19 @@ export default function ItineraryHome() {
   const anySpend = !!spend && Object.keys(spend.byItem).length > 0
   const costOf = (id: string) => { const x: ItemSpend | undefined = spend?.byItem[id]; return amounts && x && spend ? spendLabel(x, spend.currency) : undefined }
   function toggleAmounts() { const n = !amounts; setAmounts(n); try { localStorage.setItem('iou.itinAmounts', n ? '1' : '0') } catch { /* storage unavailable */ } }
+  const activeCount = (f.category !== 'all' ? 1 : 0) + (f.subtype ? 1 : 0) + (f.person ? 1 : 0)
   const sections = useMemo(() => arrange(filterItems(data.items, f), by), [data.items, f, by])
 
   return (
     <>
       <div className="app">
-        <div className="top">
+        <div className="top wrapped">
           <div>
-            <Link className="backlink" to="/itineraries">← Your itineraries</Link>
-            {it.group_id && <Link className="backlink" to={'/g/' + it.group_id} style={{ marginLeft: 12 }}>{data.groupName ?? 'Group'}</Link>}
-            {it.vault_id && data.vaultName && <Link className="backlink" to={'/vault/' + it.vault_id} style={{ marginLeft: 12 }}>{data.vaultName}</Link>}
+            <div className="crumbs">
+              <Link className="backlink" to="/itineraries">← Your itineraries</Link>
+              {it.group_id && <Link className="backlink" to={'/g/' + it.group_id}>Group · {data.groupName ?? 'open'}</Link>}
+              {it.vault_id && data.vaultName && <Link className="backlink" to={'/vault/' + it.vault_id}>Vault · {data.vaultName}</Link>}
+            </div>
             <div className="gh">
               <GroupIcon group={{ kind: 'Itinerary', icon: it.icon, color: it.color }} size={44} />
               <div>
@@ -80,25 +84,38 @@ export default function ItineraryHome() {
         {anySpend && (
           <label className="radio" style={{ marginTop: 10 }}><input type="checkbox" checked={amounts} onChange={toggleAmounts} />Show what each item cost<span className="muted small"> · group members only</span></label>
         )}
-        {present.length > 1 && (
-          <div className="chips" role="group" aria-label="Filter by category">
-            <button className="chip" aria-pressed={f.category === 'all'} onClick={() => setF({ ...f, category: 'all', subtype: '' })}>All</button>
-            {present.map(c => <button key={c.id} className="chip" aria-pressed={f.category === c.id} onClick={() => setF({ ...f, category: c.id, subtype: '' })}>{c.plural}</button>)}
+        <div className="frow">
+          <button className="btn small" aria-expanded={showFilters} onClick={() => setShowFilters(o => !o)}>Filters{activeCount > 0 ? ` (${activeCount})` : ''}</button>
+          {data.items.length > 4 && <input type="search" className="inp" placeholder="Search title, place, vendor, code" value={f.q} onChange={e => setF({ ...f, q: e.target.value })} aria-label="Search the itinerary" />}
+          {activeCount > 0 && <button className="btn small" onClick={() => setF({ ...NO_FILTERS, q: f.q })}>Clear</button>}
+        </div>
+        {showFilters && (
+          <div className="panel fpanel">
+            {present.length > 1 && (
+              <div className="chips" role="group" aria-label="Filter by category">
+                <button className="chip" aria-pressed={f.category === 'all'} onClick={() => setF({ ...f, category: 'all', subtype: '' })}>All</button>
+                {present.map(c => <button key={c.id} className="chip" aria-pressed={f.category === c.id} onClick={() => setF({ ...f, category: c.id, subtype: '' })}>{c.plural}</button>)}
+              </div>
+            )}
+            {subs.length > 1 && (
+              <div className="chips" role="group" aria-label="Filter by subtype">
+                <button className="chip" aria-pressed={f.subtype === ''} onClick={() => setF({ ...f, subtype: '' })}>Any kind</button>
+                {subs.map(n => <button key={n} className="chip" aria-pressed={f.subtype === n} onClick={() => setF({ ...f, subtype: f.subtype === n ? '' : n })}>{n}</button>)}
+              </div>
+            )}
+            {names.length > 1 && (
+              <>
+                <label className="lbl" htmlFor="fperson" style={{ marginTop: 6 }}>Person</label>
+                <select id="fperson" value={f.person} onChange={e => setF({ ...f, person: e.target.value })}>
+                  <option value="">Everyone</option>
+                  {names.map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </>
+            )}
+            {present.length <= 1 && subs.length <= 1 && names.length <= 1 && <div className="muted small">Nothing to filter by yet.</div>}
           </div>
         )}
-        {subs.length > 1 && (
-          <div className="chips" role="group" aria-label="Filter by subtype">
-            <button className="chip" aria-pressed={f.subtype === ''} onClick={() => setF({ ...f, subtype: '' })}>Any kind</button>
-            {subs.map(n => <button key={n} className="chip" aria-pressed={f.subtype === n} onClick={() => setF({ ...f, subtype: f.subtype === n ? '' : n })}>{n}</button>)}
-          </div>
-        )}
-        {names.length > 1 && (
-          <div className="chips" role="group" aria-label="Filter by person">
-            <button className="chip" aria-pressed={f.person === ''} onClick={() => setF({ ...f, person: '' })}>Everyone</button>
-            {names.map(n => <button key={n} className="chip" aria-pressed={f.person === n} onClick={() => setF({ ...f, person: f.person === n ? '' : n })}>{n}</button>)}
-          </div>
-        )}
-        {data.items.length > 4 && <input type="search" className="inp" placeholder="Search title, place, vendor, notes" value={f.q} onChange={e => setF({ ...f, q: e.target.value })} aria-label="Search the itinerary" style={{ marginTop: 10 }} />}
+        {activeCount > 0 && !showFilters && <div className="muted small" style={{ margin: '6px 0' }}>Showing {[f.category !== 'all' ? CATEGORIES.find(c => c.id === f.category)?.plural : '', f.subtype, f.person].filter(Boolean).join(' · ')}</div>}
 
         {data.items.length === 0 && <div className="empty"><b>Nothing planned yet</b>Add a flight, a stay, a dinner or anything else. Everything has a date, a time and a place, and you can link a ticket from the vault.</div>}
         {data.items.length > 0 && sections.length === 0 && <div className="empty"><b>Nothing matches</b>Try a different filter.</div>}
@@ -106,7 +123,7 @@ export default function ItineraryHome() {
         {sections.map(s => (
           <section key={s.key} className="vsec" aria-label={s.label}>
             <h2 className="vday">{s.label}{s.sub && by === 'date' && <span>{s.sub}</span>}</h2>
-            {s.items.map(x => <Row key={x.id} iid={it.id} it={x} by={by} cost={costOf(x.id)} />)}
+            {s.items.map(x => <Row key={x.id} iid={it.id} it={x} by={by} cost={costOf(x.id)} ticket={!!x.vault_item_id && data.tickets.has(x.vault_item_id)} />)}
           </section>
         ))}
       </div>
