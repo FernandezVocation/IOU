@@ -6,6 +6,9 @@ import { directionsUrl, hasRoute, kindLabel, mapUrl, websiteUrl, whenLabel } fro
 import CategoryIcon from '../components/CategoryIcon'
 import { useArm, useToast } from '../components/ui'
 import { useItinerary } from './ItineraryShell'
+import { spendLabel } from '../lib/itinerarySpend'
+import { fmtDate } from '../lib/format'
+import { fmtMoney, toMinor } from '../lib/money'
 
 export default function ItineraryItemPage() {
   const { iid = '' } = useParams()
@@ -85,6 +88,28 @@ export default function ItineraryItemPage() {
         {it.notes && <div><span>Notes</span><b style={{ whiteSpace: 'pre-wrap' }}>{it.notes}</b></div>}
         <div><span>Added by</span><b>{data.people.find(p => p.user_id === it.created_by)?.name ?? 'Someone'}</b></div>
       </div>
+
+      {data.spend && home.group_id && (() => {
+        const sp = data.spend!.byItem[it.id]
+        const qs = new URLSearchParams({ plan: it.id, vendor: it.title, ...(it.starts_on ? { date: it.starts_on } : {}), ...(it.starts_at ? { time: it.starts_at.slice(0, 5) } : {}) }).toString()
+        return (
+          <div className="panel" style={{ marginTop: 12 }}>
+            <div className="muted small">Expenses for this item <span>· group members only</span></div>
+            {sp ? (
+              <>
+                <div style={{ fontWeight: 700, fontSize: 18, margin: '4px 0' }}>{spendLabel(sp, data.spend!.currency)}</div>
+                {sp.expenses.map(e => (
+                  <Link key={e.id} className="prow" to={`/g/${home.group_id}/expense/${e.id}`}>
+                    <span style={{ flex: 1 }}>{e.vendor || 'Untitled'}<span className="muted small"> {fmtDate(e.spent_on)}{e.description ? ' · ' + e.description : ''}</span></span>
+                    <b>{fmtMoney(toMinor(e.amount, e.currency), e.currency)}</b>
+                  </Link>
+                ))}
+              </>
+            ) : <div className="muted small" style={{ margin: '4px 0' }}>None linked yet.</div>}
+            <Link className="btn block" style={{ marginTop: 8 }} to={`/g/${home.group_id}/expense/new?${qs}`}>Add expense</Link>
+          </div>
+        )
+      })()}
 
       {ticket && (
         <div className="panel vlink" style={{ marginTop: 12 }}>

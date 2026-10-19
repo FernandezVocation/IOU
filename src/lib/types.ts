@@ -56,6 +56,8 @@ export interface Expense {
   status?: ExpenseStatus
   /** The vault item this expense is for, if any. */
   vault_item_id?: string | null
+  /** The itinerary item this expense is for, if any. */
+  itinerary_item_id?: string | null
   location: string
   category: string
   /** Optional second level under the category ("Food" › "Dinner"). */

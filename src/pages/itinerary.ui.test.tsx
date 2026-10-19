@@ -30,7 +30,7 @@ const item = (o: Partial<ItineraryItem>): ItineraryItem => ({
 })
 const data = (items: ItineraryItem[], o: Partial<ItineraryData> = {}): ItineraryData => ({
   itinerary: { id: 'it', name: 'Italy 2026', icon: null, color: null, group_id: 'g1', vault_id: 'v1', invite_code: 'abc', created_at: '' },
-  items, people: [{ user_id: 'u1', role: 'owner', name: 'Ann' }, { user_id: 'u2', role: 'member', name: 'Ed' }], groupNames: ['Nonna'], groupName: 'Italy', vaultName: 'Italy docs',
+  items, people: [{ user_id: 'u1', role: 'owner', name: 'Ann' }, { user_id: 'u2', role: 'member', name: 'Ed' }], groupNames: ['Nonna'], groupName: 'Italy', vaultName: 'Italy docs', spend: null,
   myRole: 'member', userId: 'u1', isAdmin: false, isOwner: false, canChange: i => i.created_by === 'u1', ...o,
 })
 function mount(d: ItineraryData, at: string) {
@@ -87,6 +87,28 @@ describe('item page', () => {
     mount(data([item({ created_by: 'u1' })]), '/itinerary/it/item/i1')
     expect(screen.getByRole('link', { name: 'Edit' })).toBeTruthy()
     expect(screen.getByRole('button', { name: /Remove from the itinerary/ })).toBeTruthy()
+  })
+})
+
+describe('amounts', () => {
+  const spend = { currency: 'CAD', byItem: { i1: { minor: 12050, estimated: false, count: 1, missing: 0, expenses: [{ id: 'x1', vendor: 'Italo tickets', spent_on: '2026-10-09', amount: 120.5, currency: 'CAD', settled_amount: null, charged_amount: null, charged_currency: null, itinerary_item_id: 'i1' }] } } }
+  it('hides the option for people without access to the group’s expenses', () => {
+    mount(data([item({})]), '/itinerary/it')
+    expect(screen.queryByText(/Show what each item cost/)).toBeNull()
+    expect(screen.queryByText('CAD 120.50')).toBeNull()
+  })
+  it('shows the total on the timeline only once switched on', () => {
+    mount(data([item({})], { spend }), '/itinerary/it')
+    expect(screen.queryByText('CAD 120.50')).toBeNull()
+    fireEvent.click(screen.getByLabelText(/Show what each item cost/))
+    expect(screen.getByText('CAD 120.50')).toBeTruthy()
+    try { localStorage.removeItem('iou.itinAmounts') } catch { /* ignore */ }
+  })
+  it('lists the linked expenses on the item page with an Add expense shortcut', () => {
+    mount(data([item({})], { spend }), '/itinerary/it/item/i1')
+    expect(screen.getByText('Italo tickets')).toBeTruthy()
+    const add = screen.getByRole('link', { name: 'Add expense' }) as HTMLAnchorElement
+    expect(add.getAttribute('href')).toContain('plan=i1')
   })
 })
 

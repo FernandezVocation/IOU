@@ -6,7 +6,8 @@ import { supabase } from '../lib/supabase'
 import { COMMON_CURRENCIES, friendly, nowTime, todayStr } from '../lib/format'
 import { allocate, currencyDigits, fmtMoney, fromMinor, isValidCurrency, parseNum, toMinor } from '../lib/money'
 import type { Expense, ExpenseStatus, Receipt, SplitMode } from '../lib/types'
-import { STATUSES, useGroupVaultItems } from '../lib/expenseExtras'
+import { STATUSES, useGroupItineraryItems, useGroupVaultItems } from '../lib/expenseExtras'
+import CategoryIcon from '../components/CategoryIcon'
 import TypeIcon from '../components/TypeIcon'
 import { Avatar, ConfirmDialog, useToast } from '../components/ui'
 import CategoryPicker from '../components/CategoryPicker'
@@ -20,7 +21,7 @@ interface Form {
   date: string; time: string; vendor: string; description: string; location: string; category: string; subcategory: string; notes: string
   amount: string; foreign: boolean; pick: string; otherCur: string; settled: string; charged: string
   payerId: string; mode: SplitMode; entries: Record<string, string>
-  status: ExpenseStatus; itemId: string
+  status: ExpenseStatus; itemId: string; planId: string
 }
 
 const LAST_FOREIGN = 'tl_last_foreign_currency'
@@ -56,6 +57,7 @@ export default function ExpenseEditor() {
   const [confirmDel, setConfirmDel] = useState(false)
   const g = data.group, base = g.currency
   const { items: vaultItems, vaultId } = useGroupVaultItems(g.id, true)
+  const planItems = useGroupItineraryItems(g.id, true)
   const spending = g.spending_currency && g.spending_currency !== base ? g.spending_currency : null   // set only when expenses are usually entered in another currency
   const existing: Expense | undefined = eid === 'new' ? undefined : data.expenses.find(e => e.id === eid)
   const back = '/g/' + g.id
@@ -86,7 +88,7 @@ export default function ExpenseEditor() {
       charged: existing?.charged_amount != null ? String(existing.charged_amount) : '',
       payerId: existing?.payer_id ?? data.me?.id ?? data.travelers[0]?.id ?? '',
       mode: existing?.split_mode ?? 'equal',
-      status: existing?.status ?? 'final', itemId: existing ? (existing.vault_item_id ?? '') : (qs.get('item') ?? ''),
+      status: existing?.status ?? 'final', itemId: existing ? (existing.vault_item_id ?? '') : (qs.get('item') ?? ''), planId: existing ? (existing.itinerary_item_id ?? '') : (qs.get('plan') ?? ''),
       entries: existing ? Object.fromEntries(existing.splits.map(s => [s.traveler_id, String(s.value)])) : Object.fromEntries(data.travelers.map(t => [t.id, '1'])),
     })
     setKept(existing?.receipts ?? [])
@@ -182,7 +184,7 @@ export default function ExpenseEditor() {
     const splits = ids.map(i => ({ traveler_id: i, value: f.mode === 'equal' ? 1 : parseNum(f.entries[i]) }))
     const { error } = await supabase.rpc('save_expense', {
       p_id: id, p_group: g.id,
-      p: { spent_on: f.date, spent_at: f.time || '', vendor: f.vendor.trim(), description: f.description.trim(), location: f.location.trim(), category: f.category.trim(), subcategory: f.category.trim() ? f.subcategory.trim() : '', notes: f.notes.trim(), amount: amountNum, currency: cur, settled_amount: settled, charged_amount: charged?.amount ?? null, charged_currency: charged?.currency ?? null, payer_id: f.payerId, split_mode: f.mode, status: f.status, vault_item_id: f.itemId || null },
+      p: { spent_on: f.date, spent_at: f.time || '', vendor: f.vendor.trim(), description: f.description.trim(), location: f.location.trim(), category: f.category.trim(), subcategory: f.category.trim() ? f.subcategory.trim() : '', notes: f.notes.trim(), amount: amountNum, currency: cur, settled_amount: settled, charged_amount: charged?.amount ?? null, charged_currency: charged?.currency ?? null, payer_id: f.payerId, split_mode: f.mode, status: f.status, vault_item_id: f.itemId || null, itinerary_item_id: f.planId || null },
       p_splits: splits,
     })
     if (error) { toast(friendly(error)); setSaving(false); return }
@@ -366,6 +368,20 @@ export default function ExpenseEditor() {
             </select>
             {(() => { const it = vaultItems.find(i => i.id === f.itemId); return it ? (
               <div className="vitem"><TypeIcon type={it.type} size={34} /><span className="vtx"><b>{it.title}</b>{it.description && <div className="muted small">{it.description}</div>}</span>{vaultId && <Link className="btn small" to={`/vault/${vaultId}/item/${it.id}`}>Open</Link>}</div>
+            ) : null })()}
+          </>
+        )}
+
+        {(planItems.length > 0 || f.planId) && (
+          <>
+            <label className="lbl" htmlFor="pitem">Itinerary item</label>
+            <select id="pitem" value={f.planId} onChange={e => set('planId', e.target.value)}>
+              <option value="">None</option>
+              {planItems.map(i => <option key={i.id} value={i.id}>{i.title}{i.starts_on ? ' · ' + i.starts_on : ''} ({i.itinerary_name})</option>)}
+              {f.planId && !planItems.some(i => i.id === f.planId) && <option value={f.planId}>(an itinerary item you cannot see)</option>}
+            </select>
+            {(() => { const it = planItems.find(i => i.id === f.planId); return it ? (
+              <div className="vitem"><CategoryIcon category={it.category} size={34} /><span className="vtx"><b>{it.title}</b><div className="muted small">{it.itinerary_name}</div></span><Link className="btn small" to={`/itinerary/${it.itinerary_id}/item/${it.id}`}>Open</Link></div>
             ) : null })()}
           </>
         )}
