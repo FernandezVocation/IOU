@@ -70,6 +70,18 @@ describe('itinerary timeline', () => {
     const badge = screen.getAllByText('Venice to Florence').find(el => el.className.includes('vdesc'))
     expect(badge).toBeTruthy()
   })
+  it('under Type, offers subtype chips with All, and filters by them', () => {
+    mount(data([item({ id: 'f1', title: 'Flight AC894', subtype: 'Flight' }), item({ id: 't1', title: 'Milan to Venice', subtype: 'Train' })]), '/itinerary/it')
+    expect(screen.queryByRole('group', { name: 'Subtype' })).toBeNull()   // only once Type is chosen
+    fireEvent.click(screen.getByRole('button', { name: 'Type' }))
+    expect(screen.getByRole('heading', { name: /Flight/ })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: /Train/ })).toBeTruthy()
+    fireEvent.click(within(screen.getByRole('group', { name: 'Subtype' })).getByRole('button', { name: 'Train' }))
+    expect(screen.queryByText('Flight AC894')).toBeNull()
+    expect(screen.getByText('Milan to Venice')).toBeTruthy()
+    fireEvent.click(within(screen.getByRole('group', { name: 'Subtype' })).getByRole('button', { name: 'All' }))
+    expect(screen.getByText('Flight AC894')).toBeTruthy()
+  })
   it('arranges by type and names a custom category', () => {
     mount(data(items), '/itinerary/it')
     fireEvent.click(screen.getByRole('button', { name: 'Type' }))

@@ -92,4 +92,13 @@ describe('subtypes and booking codes', () => {
     expect(categoryForExpense('Housing', 'Hotel')).toMatchObject({ category: 'stay', subtype: 'Hotel' })
     expect(categoryForExpense('Fees', 'Tip')).toEqual({ category: 'custom', category_label: 'Fees', subtype: '' })
   })
+  it('under Type, splits each type by subtype and puts items without one last', () => {
+    const t = arrange(rows, 'type')
+    const transport = t.find(x => x.key === 'transport')!
+    expect(transport.subs?.map(g => [g.label, g.items.length])).toEqual([['Flight', 1], ['Train', 2]])
+    expect(transport.items.map(i => i.title)).toEqual(['b', 'a', 'c'])
+    expect(t.find(x => x.key === 'stay')!.subs).toBeUndefined()   // one subtype only: no sub-headings
+    const mixed = arrange([I({ title: 'x', subtype: 'Train' }), I({ title: 'y', subtype: '' })], 'type')[0]
+    expect(mixed.subs?.map(g => g.label)).toEqual(['Train', 'Other'])
+  })
 })

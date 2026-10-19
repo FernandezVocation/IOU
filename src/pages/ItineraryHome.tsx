@@ -13,11 +13,11 @@ import ItineraryExport from '../components/ItineraryExport'
 const pinIcon = <svg className="i" viewBox="0 0 24 24" width="18" height="18"><path d="M12 21s7-6.2 7-11a7 7 0 0 0-14 0c0 4.8 7 11 7 11z" /><circle cx="12" cy="10" r="2.5" /></svg>
 const ticketIcon = <svg className="i" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M3 8a2 2 0 0 0 0 4v0a2 2 0 0 1 0 4v2h18v-2a2 2 0 0 1 0-4 2 2 0 0 0 0-4V6H3z" /></svg>
 
-function Row({ iid, it, by, cost, ticket }: { iid: string; it: ItineraryItem; by: Arrange; cost?: string; ticket: boolean }) {
+function Row({ iid, it, by, cost, ticket, kind = '' }: { iid: string; it: ItineraryItem; by: Arrange; cost?: string; ticket: boolean; kind?: string }) {
   const dir = directionsUrl(it)
   const shortDate = it.starts_on ? fmtDate(it.starts_on).replace(/^[^,]+, /, '') : ''
   const route = it.from_place && it.to_place ? `${it.from_place} → ${it.to_place}` : ''
-  const sub = [by === 'type' || by === 'kind' ? '' : kindLabel(it), it.booking_ref ? `Ref ${it.booking_ref}` : '', by === 'place' ? '' : route || placeOf(it), it.people.length ? it.people.join(', ') : ''].filter(Boolean).join(' · ')
+  const sub = [by === 'type' ? kind : kindLabel(it), it.booking_ref ? `Ref ${it.booking_ref}` : '', by === 'place' ? '' : route || placeOf(it), it.people.length ? it.people.join(', ') : ''].filter(Boolean).join(' · ')
   return (
     <div className="vrow">
       <Link className="vmain" to={`/itinerary/${iid}/item/${it.id}`}>
@@ -50,8 +50,8 @@ export default function ItineraryHome() {
   const anySpend = !!spend && Object.keys(spend.byItem).length > 0
   const costOf = (id: string) => { const x: ItemSpend | undefined = spend?.byItem[id]; return amounts && x && spend ? spendLabel(x, spend.currency) : undefined }
   function toggleAmounts() { const n = !amounts; setAmounts(n); try { localStorage.setItem('iou.itinAmounts', n ? '1' : '0') } catch { /* storage unavailable */ } }
-  const activeCount = (f.category !== 'all' ? 1 : 0) + (f.subtype ? 1 : 0) + (f.person ? 1 : 0)
-  const sections = useMemo(() => arrange(filterItems(data.items, f), by), [data.items, f, by])
+  const activeCount = (f.category !== 'all' ? 1 : 0) + (f.person ? 1 : 0)
+  const sections = useMemo(() => arrange(filterItems(data.items, by === 'type' ? f : { ...f, subtype: '' }), by), [data.items, f, by])
 
   return (
     <>
@@ -79,10 +79,16 @@ export default function ItineraryHome() {
         </div>
 
         <div className="seg" role="group" aria-label="Arrange by">
-          {([['date', 'Date'], ['place', 'Places'], ['type', 'Type'], ['kind', 'Subtype']] as Array<[Arrange, string]>).map(([k, l]) => <button key={k} aria-pressed={by === k} onClick={() => setBy(k)}>{l}</button>)}
+          {([['date', 'Date'], ['place', 'Places'], ['type', 'Type']] as Array<[Arrange, string]>).map(([k, l]) => <button key={k} aria-pressed={by === k} onClick={() => setBy(k)}>{l}</button>)}
         </div>
         {anySpend && (
           <label className="radio" style={{ marginTop: 10 }}><input type="checkbox" checked={amounts} onChange={toggleAmounts} />Show what each item cost<span className="muted small"> · group members only</span></label>
+        )}
+        {by === 'type' && subs.length > 1 && (
+          <div className="chips" role="group" aria-label="Subtype">
+            <button className="chip" aria-pressed={f.subtype === ''} onClick={() => setF({ ...f, subtype: '' })}>All</button>
+            {subs.map(n => <button key={n} className="chip" aria-pressed={f.subtype === n} onClick={() => setF({ ...f, subtype: f.subtype === n ? '' : n })}>{n}</button>)}
+          </div>
         )}
         <div className="frow">
           <button className="btn small" aria-expanded={showFilters} onClick={() => setShowFilters(o => !o)}>Filters{activeCount > 0 ? ` (${activeCount})` : ''}</button>
@@ -97,12 +103,6 @@ export default function ItineraryHome() {
                 {present.map(c => <button key={c.id} className="chip" aria-pressed={f.category === c.id} onClick={() => setF({ ...f, category: c.id, subtype: '' })}>{c.plural}</button>)}
               </div>
             )}
-            {subs.length > 1 && (
-              <div className="chips" role="group" aria-label="Filter by subtype">
-                <button className="chip" aria-pressed={f.subtype === ''} onClick={() => setF({ ...f, subtype: '' })}>Any kind</button>
-                {subs.map(n => <button key={n} className="chip" aria-pressed={f.subtype === n} onClick={() => setF({ ...f, subtype: f.subtype === n ? '' : n })}>{n}</button>)}
-              </div>
-            )}
             {names.length > 1 && (
               <>
                 <label className="lbl" htmlFor="fperson" style={{ marginTop: 6 }}>Person</label>
@@ -112,10 +112,10 @@ export default function ItineraryHome() {
                 </select>
               </>
             )}
-            {present.length <= 1 && subs.length <= 1 && names.length <= 1 && <div className="muted small">Nothing to filter by yet.</div>}
+            {present.length <= 1 && names.length <= 1 && <div className="muted small">Nothing to filter by yet.</div>}
           </div>
         )}
-        {activeCount > 0 && !showFilters && <div className="muted small" style={{ margin: '6px 0' }}>Showing {[f.category !== 'all' ? CATEGORIES.find(c => c.id === f.category)?.plural : '', f.subtype, f.person].filter(Boolean).join(' · ')}</div>}
+        {activeCount > 0 && !showFilters && <div className="muted small" style={{ margin: '6px 0' }}>Showing {[f.category !== 'all' ? CATEGORIES.find(c => c.id === f.category)?.plural : '', f.person].filter(Boolean).join(' · ')}</div>}
 
         {data.items.length === 0 && <div className="empty"><b>Nothing planned yet</b>Add a flight, a stay, a dinner or anything else. Everything has a date, a time and a place, and you can link a ticket from the vault.</div>}
         {data.items.length > 0 && sections.length === 0 && <div className="empty"><b>Nothing matches</b>Try a different filter.</div>}
@@ -123,7 +123,12 @@ export default function ItineraryHome() {
         {sections.map(s => (
           <section key={s.key} className="vsec" aria-label={s.label}>
             <h2 className="vday">{s.label}{s.sub && by === 'date' && <span>{s.sub}</span>}</h2>
-            {s.items.map(x => <Row key={x.id} iid={it.id} it={x} by={by} cost={costOf(x.id)} ticket={!!x.vault_item_id && data.tickets.has(x.vault_item_id)} />)}
+            {(s.subs ?? [{ label: '', items: s.items }]).map(g => (
+              <div key={g.label}>
+                {s.subs && <h3 className="vsub">{g.label}<span className="muted small"> · {g.items.length}</span></h3>}
+                {g.items.map(x => <Row key={x.id} iid={it.id} it={x} by={by} kind={by === 'type' && !s.subs ? x.subtype : ''} cost={costOf(x.id)} ticket={!!x.vault_item_id && data.tickets.has(x.vault_item_id)} />)}
+              </div>
+            ))}
           </section>
         ))}
       </div>

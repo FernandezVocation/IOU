@@ -50,7 +50,9 @@ export function directionsUrl(i: Pick<ItineraryItem, 'address' | 'place' | 'from
 }
 
 export type Arrange = 'date' | 'place' | 'type' | 'kind'
-export interface Section { key: string; label: string; sub?: string; items: ItineraryItem[] }
+export interface Section { key: string; label: string; sub?: string; items: ItineraryItem[]
+  /** Under Type: the items split by subtype (Flight, Train…), when there is more than one. */
+  subs?: Array<{ label: string; items: ItineraryItem[] }> }
 
 const cmp = (a: ItineraryItem, b: ItineraryItem) =>
   (a.starts_on ?? '9999').localeCompare(b.starts_on ?? '9999') || (a.starts_at ?? '99').localeCompare(b.starts_at ?? '99') || a.title.localeCompare(b.title)
@@ -82,6 +84,15 @@ export function arrange(items: ItineraryItem[], by: Arrange): Section[] {
     const ia = CATEGORIES.findIndex(c => c.id === (a.key.startsWith('custom:') ? 'custom' : a.key)), ib = CATEGORIES.findIndex(c => c.id === (b.key.startsWith('custom:') ? 'custom' : b.key))
     return ia - ib || a.label.localeCompare(b.label)
   })
+  if (by === 'type') for (const s of list) {
+    const kinds = new Map<string, ItineraryItem[]>()
+    for (const i of s.items) { const k = i.subtype.trim(); (kinds.get(k.toLowerCase()) ?? kinds.set(k.toLowerCase(), []).get(k.toLowerCase())!).push(i) }
+    if (kinds.size > 1) {
+      const groups = [...kinds.entries()].sort((a, b) => (a[0] === '' ? 1 : b[0] === '' ? -1 : a[0].localeCompare(b[0])))
+        .map(([, items]) => ({ label: items[0].subtype.trim() || 'Other', items }))
+      s.subs = groups; s.items = groups.flatMap(g => g.items)
+    }
+  }
   return list
 }
 
