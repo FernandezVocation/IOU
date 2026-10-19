@@ -5,6 +5,7 @@ import { friendly, fmtDate, fmtTime } from '../lib/format'
 import { byLink, DIARY_COLS, matchDiary, sortDiary, type DiaryEntry } from '../lib/diary'
 import { Spinner } from '../components/ui'
 import TopNav from '../components/TopNav'
+import DiaryExport from '../components/DiaryExport'
 
 export default function DiaryPage() {
   const [sp] = useSearchParams()
@@ -15,6 +16,7 @@ export default function DiaryPage() {
   const [groups, setGroups] = useState<Record<string, string>>({})
   const [photos, setPhotos] = useState<Record<string, number>>({})
   const [q, setQ] = useState('')
+  const [exporting, setExporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -70,8 +72,10 @@ export default function DiaryPage() {
           </div>
         ))}
       </div>
+      {shown.length > 0 && <button className="btn block" style={{ marginTop: 8 }} onClick={() => setExporting(true)}>Export to Word or PDF</button>}
       <Link className="btn primary block" to={newTo} style={{ marginTop: 14 }}>Write an entry</Link>
     </div>
+    {exporting && <DiaryExport entries={shown} trips={trips} groups={groups} title={filter in trips ? trips[filter] + ' diary' : filter in groups ? groups[filter] + ' diary' : 'My diary'} onClose={() => setExporting(false)} />}
     <TopNav />
     </>
   )

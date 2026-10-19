@@ -12,6 +12,8 @@ import TypeIcon from '../components/TypeIcon'
 import { Avatar, ConfirmDialog, useToast } from '../components/ui'
 import CategoryPicker from '../components/CategoryPicker'
 import AddExpenseToItinerary from '../components/AddExpenseToItinerary'
+import { categoryForExpense } from '../lib/itinerary'
+import { itinerariesFor } from '../lib/useItinerary'
 import { useAuth } from '../lib/auth'
 import { userName } from '../lib/payments'
 import { canEditGroup, canModifyExpense } from '../lib/access'
@@ -57,6 +59,10 @@ export default function ExpenseEditor() {
   const { user } = useAuth()
   const [confirmDel, setConfirmDel] = useState(false)
   const [addPlan, setAddPlan] = useState(false)
+  const [itins, setItins] = useState<Array<{ id: string; name: string }>>([])
+  const [alsoPlan, setAlsoPlan] = useState(false)
+  const [alsoIt, setAlsoIt] = useState('')
+  useEffect(() => { itinerariesFor(data.group.id).then(l => { setItins(l); if (l.length) setAlsoIt(l[0].id) }).catch(() => { /* optional list: leave the toggle out */ }) }, [data.group.id])
   const g = data.group, base = g.currency
   const { items: vaultItems, vaultId } = useGroupVaultItems(g.id, true)
   const planItems = useGroupItineraryItems(g.id, true)
@@ -192,6 +198,19 @@ export default function ExpenseEditor() {
     if (error) { toast(friendly(error)); setSaving(false); return }
     if (f.foreign && cur !== base && !spending) lsSet(LAST_FOREIGN, cur)
 
+    // "Also add to itinerary": the expense is already saved, so a failure here is reported without losing it.
+    let planProblem = false
+    if (!existing && alsoPlan && alsoIt && !f.planId) {
+      const c = categoryForExpense(f.category.trim(), f.subcategory.trim())
+      const ins = await supabase.from('itinerary_items').insert({
+        itinerary_id: alsoIt, category: c.category, category_label: c.category_label, subtype: c.subtype,
+        title: (f.vendor.trim() || f.description.trim() || 'Expense').slice(0, 120), description: f.description.trim().slice(0, 200), vendor: f.vendor.trim().slice(0, 80),
+        booking_ref: f.ref.trim(), starts_on: f.date || null, starts_at: f.time || null, place: f.location.trim().slice(0, 80), notes: f.notes.trim(), created_by: user?.id,
+      }).select('id').single()
+      if (ins.error || !ins.data) planProblem = true
+      else { const l = await supabase.rpc('link_expense_itinerary_item', { p_expense: id, p_item: (ins.data as { id: string }).id }); planProblem = !!l.error }
+    }
+
     // Receipts are secondary to the expense: the expense is already saved, so report failures without losing it.
     let receiptProblem = false
     for (const file of files) {
@@ -207,7 +226,7 @@ export default function ExpenseEditor() {
       await supabase.storage.from('receipts').remove(removed.map(r => r.path))
     }
     await reload()
-    toast(receiptProblem ? 'Expense saved, but a receipt failed to upload. Open it to retry.' : existing ? 'Expense updated.' : 'Expense added.')
+    toast(receiptProblem ? 'Expense saved, but a receipt failed to upload. Open it to retry.' : planProblem ? 'Expense saved, but it could not be added to the itinerary. Use Add to itinerary on the expense.' : existing ? 'Expense updated.' : 'Expense added.')
     nav(back, { replace: true })
   }
 
@@ -387,6 +406,19 @@ export default function ExpenseEditor() {
             {(() => { const it = planItems.find(i => i.id === f.planId); return it ? (
               <div className="vitem"><CategoryIcon category={it.category} size={34} /><span className="vtx"><b>{it.title}</b><div className="muted small">{it.itinerary_name}</div></span><Link className="btn small" to={`/itinerary/${it.itinerary_id}/item/${it.id}`}>Open</Link></div>
             ) : null })()}
+          </>
+        )}
+
+        {!existing && !f.planId && itins.length > 0 && (
+          <>
+            <label className="chk"><input type="checkbox" checked={alsoPlan} onChange={e => setAlsoPlan(e.target.checked)} /> Also add this to an itinerary</label>
+            {alsoPlan && (
+              <>
+                <label className="lbl" htmlFor="alsoit">Which itinerary</label>
+                <select id="alsoit" value={alsoIt} onChange={e => setAlsoIt(e.target.value)}>{itins.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}</select>
+                <div className="muted small">Creates an item from the vendor, date, category and booking code, and links it to this expense. You can edit it afterwards.</div>
+              </>
+            )}
           </>
         )}
 

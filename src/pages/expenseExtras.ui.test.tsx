@@ -5,11 +5,17 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 
 const rpc = vi.fn(async (..._args: unknown[]) => ({ data: 'id', error: null }))
 const items = vi.hoisted(() => ({ list: [] as Array<{ id: string; title: string; description: string; type: string; starts_on: string | null }> }))
+const itins = vi.hoisted(() => ({ list: [] as Array<{ id: string; name: string }> }))
+const itinInserts = vi.hoisted(() => [] as unknown[])
 vi.mock('../lib/supabase', () => ({
   configured: true,
   supabase: {
     rpc: (...a: unknown[]) => rpc(...a),
-    from: (t: string) => t === 'vaults'
+    from: (t: string) => t === 'itineraries'
+      ? { select: () => ({ eq: () => ({ order: async () => ({ data: itins.list }) }) }) }
+      : t === 'itinerary_items'
+        ? { insert: (row: unknown) => { itinInserts.push(row); return { select: () => ({ single: async () => ({ data: { id: 'newitem' }, error: null }) }) } } }
+      : t === 'vaults'
       ? { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { id: 'v1' } }) }) }) }
       : t === 'vault_items'
         ? { select: () => ({ eq: () => ({ order: async () => ({ data: items.list }) }) }) }
@@ -39,7 +45,7 @@ const wrap = (d: GroupData, at: string, el: JSX.Element) => render(
   </GroupContext.Provider></ToastProvider>)
 const lastP = () => (rpc.mock.calls.at(-1) as unknown as [string, { p: Record<string, unknown> }])[1].p
 
-beforeEach(() => { rpc.mockClear(); items.list = [] })
+beforeEach(() => { rpc.mockClear(); items.list = []; itins.list = []; itinInserts.length = 0 })
 afterEach(cleanup)
 
 describe('expense editor: status and vault item', () => {
@@ -91,5 +97,28 @@ describe('expense list: status label and vault icon', () => {
     wrap(data([exp({ id: 'a1', vendor: 'Train', vault_item_id: 'i1' }), exp({ id: 'a2', vendor: 'Secret', vault_item_id: 'hidden' })]), '/g/g', <ExpensesTab />)
     expect(await screen.findByLabelText('Linked to vault item: Italo')).toBeTruthy()
     expect(screen.getAllByLabelText(/Linked to vault item/)).toHaveLength(1)
+  })
+})
+
+describe('expense editor: also add to itinerary', () => {
+  it('offers the toggle only when the group has an itinerary', async () => {
+    wrap(data([]), '/g/g/expense/new', <ExpenseEditor />)
+    await screen.findByLabelText('Amount')
+    expect(screen.queryByLabelText(/Also add this to an itinerary/)).toBeNull()
+  })
+  it('creates a prefilled itinerary item and links the new expense to it', async () => {
+    itins.list = [{ id: 'it1', name: 'Italy 2026' }]
+    wrap(data([]), '/g/g/expense/new', <ExpenseEditor />)
+    fireEvent.click(await screen.findByLabelText(/Also add this to an itinerary/))
+    fireEvent.change(screen.getByLabelText('Vendor'), { target: { value: 'Italo' } })
+    fireEvent.change(screen.getByLabelText('Booking code (optional)'), { target: { value: 'XK92LM' } })
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '50' } })
+    fireEvent.click(screen.getByText('Save'))
+    await waitFor(() => expect(rpc.mock.calls.some(c => c[0] === 'link_expense_itinerary_item')).toBe(true))
+    expect(itinInserts[0]).toMatchObject({ itinerary_id: 'it1', title: 'Italo', booking_ref: 'XK92LM', created_by: 'u1' })
+    const save = rpc.mock.calls.find(c => c[0] === 'save_expense') as unknown as [string, { p_id: string; p: Record<string, unknown> }]
+    expect(save[1].p.booking_ref).toBe('XK92LM')
+    const link = rpc.mock.calls.find(c => c[0] === 'link_expense_itinerary_item') as unknown as [string, { p_expense: string; p_item: string }]
+    expect(link[1]).toEqual({ p_expense: save[1].p_id, p_item: 'newitem' })
   })
 })
