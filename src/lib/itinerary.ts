@@ -111,6 +111,31 @@ export function filterItems(items: ItineraryItem[], f: Filters): ItineraryItem[]
 export const subtypesIn = (items: Array<Pick<ItineraryItem, 'category' | 'subtype'>>, category: 'all' | Category = 'all') =>
   [...new Set(items.filter(i => category === 'all' || i.category === category).map(i => i.subtype.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b))
 
+/** Account names (lower case) that stand for a group traveler. */
+export type Aliases = Record<string, string>
+/**
+ * A person can appear twice: under the name on their own account (an itinerary member) and under the name the group gave their
+ * traveler. When a member is also a traveler in the linked group, the traveler name wins. Ambiguous account names are skipped.
+ */
+export function buildAliases(members: Array<{ user_id: string; name: string }>, travelers: Array<{ user_id: string | null; name: string }>): Aliases {
+  const out: Aliases = {}; const dead = new Set<string>()
+  for (const m of members) {
+    const t = travelers.find(x => x.user_id === m.user_id)
+    const key = m.name.trim().toLowerCase()
+    if (!t || !key || key === 'someone' || t.name.trim().toLowerCase() === key) continue
+    if (key in out && out[key] !== t.name) dead.add(key)
+    out[key] = t.name
+  }
+  for (const k of dead) delete out[k]
+  return out
+}
+/** One name per person: map account names to traveler names and drop repeats. */
+export function canonPeople(names: string[], a: Aliases): string[] {
+  const seen = new Set<string>(); const out: string[] = []
+  for (const n of names) { const c = a[n.trim().toLowerCase()] ?? n; const k = c.toLowerCase(); if (!seen.has(k)) { seen.add(k); out.push(c) } }
+  return out
+}
+
 /** Everyone named on any item, for the person filter. */
 export const peopleIn = (items: Array<Pick<ItineraryItem, 'people'>>) => [...new Set(items.flatMap(i => i.people))].sort((a, b) => a.localeCompare(b))
 

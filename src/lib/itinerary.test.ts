@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { arrange, categoryForExpense, categoryForVaultType, subtypesIn, customNames, directionsUrl, filterItems, kindLabel, mapUrl, NO_FILTERS, peopleIn, type ItineraryItem } from './itinerary'
+import { buildAliases, canonPeople, arrange, categoryForExpense, categoryForVaultType, subtypesIn, customNames, directionsUrl, filterItems, kindLabel, mapUrl, NO_FILTERS, peopleIn, type ItineraryItem } from './itinerary'
 
 const I = (o: Partial<ItineraryItem>): ItineraryItem => ({
   id: o.title ?? 'x', itinerary_id: 'it', category: 'transport', category_label: '', subtype: '', title: 'T', description: '', vendor: '',
@@ -100,5 +100,20 @@ describe('subtypes and booking codes', () => {
     expect(t.find(x => x.key === 'stay')!.subs).toBeUndefined()   // one subtype only: no sub-headings
     const mixed = arrange([I({ title: 'x', subtype: 'Train' }), I({ title: 'y', subtype: '' })], 'type')[0]
     expect(mixed.subs?.map(g => g.label)).toEqual(['Train', 'Other'])
+  })
+})
+
+describe('one name per person', () => {
+  const members = [{ user_id: 'u1', name: 'Shirley Fernandez' }, { user_id: 'u2', name: 'Lavi' }, { user_id: 'u3', name: 'Steve' }, { user_id: 'u4', name: 'Outsider' }]
+  const travelers = [{ user_id: 'u1', name: 'ShirleyFernandez' }, { user_id: 'u2', name: 'Lavina Ferrao' }, { user_id: 'u3', name: 'Steve' }, { user_id: null, name: 'Nonna' }, { user_id: 'u9', name: 'ShirleyFerrao' }]
+  const a = buildAliases(members, travelers)
+  it('maps an account name to the traveler name of the same person', () => {
+    expect(a).toEqual({ 'shirley fernandez': 'ShirleyFernandez', lavi: 'Lavina Ferrao' })   // Steve already matches; Outsider is not in the group
+  })
+  it('shows each person once, leaves other people alone, and is case-blind', () => {
+    expect(canonPeople(['Shirley Fernandez', 'ShirleyFernandez', 'shirley fernandez', 'ShirleyFerrao', 'Nonna'], a)).toEqual(['ShirleyFernandez', 'ShirleyFerrao', 'Nonna'])
+  })
+  it('skips an account name that two members share', () => {
+    expect(buildAliases([{ user_id: 'u1', name: 'Sam' }, { user_id: 'u2', name: 'Sam' }], [{ user_id: 'u1', name: 'Samuel' }, { user_id: 'u2', name: 'Samantha' }])).toEqual({})
   })
 })

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { friendly } from '../lib/format'
-import { CATEGORIES, categoryOf, customNames, type Category } from '../lib/itinerary'
+import { CATEGORIES, canonPeople, categoryOf, customNames, type Category } from '../lib/itinerary'
 import { useToast } from '../components/ui'
 import { useItinerary } from './ItineraryShell'
 
@@ -70,7 +70,7 @@ export default function ItineraryItemEditor() {
 
   const places = useMemo(() => [...new Set(data.items.flatMap(i => [i.place, i.from_place, i.to_place]).map(p => p.trim()).filter(Boolean))].sort(), [data.items])
   const known = useMemo(() => [...new Set([...customNames(data.items), ...remembered()])].sort((a, b) => a.localeCompare(b)), [data.items])
-  const options = useMemo(() => [...new Set([...data.people.map(p => p.name), ...data.groupNames])].filter(n => n && n !== 'Someone'), [data.people, data.groupNames])
+  const options = useMemo(() => canonPeople([...data.groupNames, ...data.people.map(p => p.name)], data.aliases ?? {}).filter(n => n && n !== 'Someone'), [data.people, data.groupNames, data.aliases])
   const c = categoryOf(category)
 
   if (!!iid && !existing) return <div className="app"><div className="empty"><b>Item not found</b></div><Link className="btn block" to={back}>Back to the itinerary</Link></div>

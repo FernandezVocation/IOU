@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './supabase'
 import { friendly } from './format'
-import type { ItineraryItem, ItineraryMember, ItineraryRow } from './itinerary'
+import { buildAliases, canonPeople, type ItineraryItem, type ItineraryMember, type ItineraryRow } from './itinerary'
 import { spendByItem, type Spend, type SpendExpense } from './itinerarySpend'
 
 export interface ItineraryData {
   itinerary: ItineraryRow
   items: ItineraryItem[]
   people: ItineraryMember[]
+  /** Account name (lower case) to the group's traveler name for the same person, so each person appears once. */
+  aliases?: Record<string, string>
   /** Names of the linked group's travelers (with or without an account). Empty when not linked or not visible. */
   groupNames: string[]
   groupName: string | null
@@ -15,6 +17,8 @@ export interface ItineraryData {
   /** Expense totals per item, in the group's currency. Null unless the itinerary is linked to a group the viewer is in, so
    *  people outside the group never get an amount. */
   spend: Spend | null
+  /** Linked vault items the viewer can actually open (the rest are hidden by row-level rules), so the ticket icon is shown only when it leads somewhere. */
+  tickets: Set<string>
   myRole: 'owner' | 'admin' | 'member'
   userId: string
   isAdmin: boolean
@@ -39,13 +43,15 @@ export function useItineraryData(id: string, userId: string) {
     if (!it.data) { setError('This itinerary was not found, or you are not in it.'); setLoading(false); return }
     const row = it.data as ItineraryRow
     let groupNames: string[] = [], groupName: string | null = null, vaultName: string | null = null
+    let travelers: Array<{ user_id: string | null; name: string }> = []
     if (row.group_id) {
       const [g, t] = await Promise.all([
         supabase.from('groups').select('name').eq('id', row.group_id).maybeSingle(),
-        supabase.from('travelers').select('name').eq('group_id', row.group_id),
+        supabase.from('travelers').select('name, user_id').eq('group_id', row.group_id),
       ])
       groupName = (g.data as { name: string } | null)?.name ?? null
-      groupNames = ((t.data ?? []) as Array<{ name: string }>).map(x => x.name)
+      travelers = (t.data ?? []) as Array<{ user_id: string | null; name: string }>
+      groupNames = travelers.map(x => x.name)
     }
     if (row.vault_id) {
       const v = await supabase.from('vaults').select('name').eq('id', row.vault_id).maybeSingle()
@@ -66,11 +72,18 @@ export function useItineraryData(id: string, userId: string) {
         spend = spendByItem((ex.data ?? []) as SpendExpense[], cur, rates)
       }
     }
+    const linked = ((items.data ?? []) as ItineraryItem[]).map(i => i.vault_item_id).filter((x): x is string => !!x)
+    let tickets = new Set<string>()
+    if (linked.length) {
+      const t = await supabase.from('vault_items').select('id').in('id', linked)
+      tickets = new Set(((t.data ?? []) as Array<{ id: string }>).map(x => x.id))
+    }
     const people = (pp.data ?? []) as ItineraryMember[]
+    const aliases = buildAliases(people, travelers)
     const myRole = people.find(p => p.user_id === userId)?.role ?? 'member'
     const isAdmin = myRole === 'owner' || myRole === 'admin'
     setData({
-      itinerary: row, items: (items.data ?? []) as ItineraryItem[], people, groupNames, groupName, vaultName, spend, myRole, userId, isAdmin, isOwner: myRole === 'owner',
+      itinerary: row, items: ((items.data ?? []) as ItineraryItem[]).map(i => ({ ...i, people: canonPeople(i.people, aliases) })), aliases, people, groupNames, groupName, vaultName, spend, tickets, myRole, userId, isAdmin, isOwner: myRole === 'owner',
       canChange: i => i.created_by === userId || isAdmin,
     })
     setError(null); setLoading(false)
