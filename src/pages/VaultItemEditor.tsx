@@ -71,7 +71,7 @@ export default function VaultItemEditor() {
     setBusy(true); setError(null)
     const row = {
       type, title: title.trim(), description: description.trim(), starts_on: strOrNull(startsOn), starts_at: strOrNull(startsAt), ends_on: showEnd ? strOrNull(endsOn) : null, ends_at: showEnd ? strOrNull(endsAt) : null,
-      place: place.trim(), address: address.trim(), website: website.trim(), notes: notes.trim(), private: priv,
+      place: place.trim(), address: address.trim(), website: website.trim(), notes: notes.trim(), private: v.personal ? false : priv,
     }
     let id = existing?.id
     if (existing) {
@@ -170,12 +170,17 @@ export default function VaultItemEditor() {
         ))}
         <div className="muted small" style={{ marginTop: 6 }}>Photos are shrunk to fit. Keep the original QR screenshot for the sharpest scan.</div>
 
+        {!v.personal && (
+          <>
         <span className="lbl" id="vvis">Who can see it?</span>
         <div className="seg" role="group" aria-labelledby="vvis">
           <button type="button" aria-pressed={!priv} onClick={() => { setTouchedPriv(true); setPriv(false) }}>Everyone in the vault</button>
           <button type="button" aria-pressed={priv} onClick={() => { setTouchedPriv(true); setPriv(true) }}>Only me</button>
         </div>
         <div className="muted small" style={{ marginTop: 6 }}>Documents start as Only me. Private items are hidden from everyone else, including the owner, and never appear in read-only links.</div>
+
+          </>
+        )}
 
         {error && <div className="notice err" role="alert">{error}</div>}
         <button className="btn primary block" style={{ marginTop: 18 }} disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>

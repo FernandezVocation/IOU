@@ -15,6 +15,7 @@ export default function VaultSettings({ onClose }: { onClose: () => void }) {
   const toast = useToast()
   const arm = useArm()
   const v = data.vault
+  const personal = !!v.personal
   const [name, setName] = useState(v.name)
   const [groups, setGroups] = useState<G[]>([])
   const [linked, setLinked] = useState<G | null>(null)
@@ -52,7 +53,10 @@ export default function VaultSettings({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <Sheet title="Vault people and settings" onClose={onClose}>
+    <Sheet title={personal ? 'My vault settings' : 'Vault people and settings'} onClose={onClose}>
+      {personal && <div className="notice">This is your private vault. Only you can see it. Nobody can join it, and it can’t be linked to a group.</div>}
+      {!personal && (
+        <>
       <div className="sect" style={{ marginTop: 0 }}>
         <h2>People</h2>
         <div className="muted small">Everyone can add items and change the ones they add. Owners and co-admins can change any item they can see. Private items are visible only to the person who added them.</div>
@@ -108,6 +112,9 @@ export default function VaultSettings({ onClose }: { onClose: () => void }) {
           </>
         ) : <div className="muted small">Not linked to a group.</div>}
       </div>
+
+        </>
+      )}
 
       {data.isAdmin && (
         <div className="sect">

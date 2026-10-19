@@ -52,13 +52,13 @@ export default function VaultHome() {
               <GroupIcon group={{ kind: 'Vault', icon: v.icon, color: v.color }} size={44} />
               <div>
                 <h1>{v.name}</h1>
-                <div className="sub">{data.items.length} {data.items.length === 1 ? 'item' : 'items'} · times are local to each place</div>
+                <div className="sub">{v.personal ? 'Private · only you · ' : ''}{data.items.length} {data.items.length === 1 ? 'item' : 'items'} · times are local to each place</div>
               </div>
             </div>
           </div>
           <div className="vtools">
             {data.isAdmin && <button className="btn small" onClick={() => setSheet('share')} aria-label="Read-only links">Share</button>}
-            <button className="btn small" onClick={() => setSheet('settings')} aria-label="Vault settings">People</button>
+            <button className="btn small" onClick={() => setSheet('settings')} aria-label="Vault settings">{v.personal ? 'Settings' : 'People'}</button>
           </div>
         </div>
 

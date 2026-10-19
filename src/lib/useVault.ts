@@ -24,7 +24,7 @@ export function useVaultData(vaultId: string, userId: string) {
 
   const load = useCallback(async () => {
     const [v, it, fl, pp] = await Promise.all([
-      supabase.from('vaults').select('id, name, icon, color, group_id, invite_code, created_at').eq('id', vaultId).maybeSingle(),
+      supabase.from('vaults').select('id, name, icon, color, group_id, invite_code, created_at, personal').eq('id', vaultId).maybeSingle(),
       supabase.from('vault_items').select('*').eq('vault_id', vaultId),
       supabase.from('vault_files').select('id, item_id, path, name, mime, label').eq('vault_id', vaultId).order('created_at'),
       supabase.rpc('vault_people', { p_vault: vaultId }),

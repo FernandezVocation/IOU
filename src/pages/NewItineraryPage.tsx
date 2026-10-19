@@ -24,7 +24,7 @@ export default function NewItineraryPage() {
     (async () => {
       const [m, v] = await Promise.all([
         supabase.from('group_members').select('groups(id, name)').in('role', ['owner', 'admin']),
-        supabase.from('vaults').select('id, name').order('name'),
+        supabase.from('vaults').select('id, name').eq('personal', false).order('name'),
       ])
       type Row = { groups: G | G[] | null }
       const gl = ((m.data ?? []) as unknown as Row[]).map(r => Array.isArray(r.groups) ? r.groups[0] : r.groups).filter((g): g is G => !!g)

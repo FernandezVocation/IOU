@@ -15,7 +15,7 @@ export const TYPES: Array<{ id: ItemType; label: string; plural: string; tint: s
 ]
 export const typeOf = (id: string) => TYPES.find(t => t.id === id) ?? TYPES[TYPES.length - 1]
 
-export interface VaultRow { id: string; name: string; icon: string | null; color: string | null; group_id: string | null; invite_code: string; created_at: string }
+export interface VaultRow { id: string; name: string; icon: string | null; color: string | null; group_id: string | null; invite_code: string; created_at: string; personal?: boolean }
 export interface VaultFile { id: string; item_id: string; path: string; name: string; mime: string; label: string }
 export interface VaultItem {
   id: string; vault_id: string; type: ItemType; title: string; description: string

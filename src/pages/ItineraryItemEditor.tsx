@@ -11,7 +11,7 @@ const LS = 'iou.customCategories'
 function remembered(): string[] { try { const v = JSON.parse(localStorage.getItem(LS) ?? '[]'); return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [] } catch { return [] } }
 function remember(name: string) { try { localStorage.setItem(LS, JSON.stringify([...new Set([name, ...remembered()])].slice(0, 30))) } catch { /* storage unavailable: the names still come from this itinerary's items */ } }
 
-interface VI { id: string; title: string; type: string }
+interface VI { id: string; title: string; type: string; vault_id: string }
 
 export default function ItineraryItemEditor() {
   const { iid = '' } = useParams()
@@ -51,10 +51,20 @@ export default function ItineraryItemEditor() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Vault items the signed-in person can see in the linked vault (the database also checks this on save).
+  // Vault items the signed-in person can see: the linked vault's, and their own private vault's (the database also checks on save).
+  const [mineId, setMineId] = useState<string | null>(null)
   useEffect(() => {
-    if (!home.vault_id) return
-    supabase.from('vault_items').select('id, title, type').eq('vault_id', home.vault_id).order('title').then(({ data: d }) => setVaultItems((d ?? []) as VI[]))
+    let alive = true
+    ;(async () => {
+      const pv = await supabase.from('vaults').select('id').eq('personal', true).maybeSingle()
+      const pid = (pv.data as { id: string } | null)?.id ?? null
+      const ids = [home.vault_id, pid].filter((x): x is string => !!x)
+      if (alive) setMineId(pid)
+      if (!ids.length) return
+      const r = await supabase.from('vault_items').select('id, title, type, vault_id').in('vault_id', ids).order('title')
+      if (alive) setVaultItems((r.data ?? []) as VI[])
+    })()
+    return () => { alive = false }
   }, [home.vault_id])
 
   const places = useMemo(() => [...new Set(data.items.flatMap(i => [i.place, i.from_place, i.to_place]).map(p => p.trim()).filter(Boolean))].sort(), [data.items])
@@ -183,13 +193,13 @@ export default function ItineraryItemEditor() {
         <label className="lbl" htmlFor="ino">Notes and instructions</label>
         <textarea id="ino" rows={3} value={notes} maxLength={2000} onChange={e => setNotes(e.target.value)} placeholder="Booking reference, gate, instructions" />
 
-        {home.vault_id && (
+        {(home.vault_id || mineId) && (
           <>
             <label className="lbl" htmlFor="ivi">Vault item</label>
             <select id="ivi" value={vaultItem} onChange={e => setVaultItem(e.target.value)}>
               <option value="">None</option>
               {vaultItem && !vaultItems.some(v => v.id === vaultItem) && <option value={vaultItem}>Linked item</option>}
-              {vaultItems.map(v => <option key={v.id} value={v.id}>{v.title}</option>)}
+              {vaultItems.map(v => <option key={v.id} value={v.id}>{v.title}{v.vault_id === mineId ? ' (My vault)' : ''}</option>)}
             </select>
             <div className="muted small" style={{ marginTop: 4 }}>Only people who can see that vault item see the link.</div>
           </>
