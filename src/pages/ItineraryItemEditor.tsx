@@ -31,7 +31,8 @@ export default function ItineraryItemEditor() {
   const [subtype, setSubtype] = useState(existing?.subtype ?? pre('subtype'))
   const [title, setTitle] = useState(existing?.title ?? pre('title'))
   const [description, setDescription] = useState(existing?.description ?? pre('description'))
-  const [vendor, setVendor] = useState(existing?.vendor ?? '')
+  const [vendor, setVendor] = useState(existing?.vendor ?? pre('vendor'))
+  const [bookingRef, setBookingRef] = useState(existing?.booking_ref ?? pre('ref'))
   const [startsOn, setStartsOn] = useState(existing?.starts_on ?? pre('date'))
   const [startsAt, setStartsAt] = useState((existing?.starts_at ?? pre('time')).slice(0, 5))
   const [endsOn, setEndsOn] = useState(existing?.ends_on ?? pre('end_date'))
@@ -90,7 +91,7 @@ export default function ItineraryItemEditor() {
     setBusy(true); setError(null)
     const row = {
       category, category_label: category === 'custom' ? catLabel.trim() : '', subtype: subtype.trim(),
-      title: title.trim(), description: description.trim(), vendor: vendor.trim(),
+      title: title.trim(), description: description.trim(), vendor: vendor.trim(), booking_ref: bookingRef.trim(),
       starts_on: strOrNull(startsOn), starts_at: strOrNull(startsAt), ends_on: showEnd ? strOrNull(endsOn) : null, ends_at: showEnd ? strOrNull(endsAt) : null,
       place: place.trim(), address: address.trim(), from_place: category === 'transport' ? fromPlace.trim() : '', to_place: category === 'transport' ? toPlace.trim() : '',
       website: website.trim(), notes: notes.trim(), people, private: priv, vault_item_id: vaultItem || null,
@@ -108,9 +109,12 @@ export default function ItineraryItemEditor() {
       id = (ins as { id: string }).id
     }
     if (category === 'custom') remember(catLabel.trim())
+    const fromExpense = !existing ? sp.get('expense') : null
+    let linkProblem = false
+    if (fromExpense && id) { const l = await supabase.rpc('link_expense_itinerary_item', { p_expense: fromExpense, p_item: id }); linkProblem = !!l.error }
     await reload()
     setBusy(false)
-    toast(existing ? 'Updated.' : 'Added to the itinerary.')
+    toast(linkProblem ? 'Added, but the expense could not be linked. Open the expense to try again.' : existing ? 'Updated.' : fromExpense ? 'Added and linked to the expense.' : 'Added to the itinerary.')
     nav(`${back}/item/${id}`, { replace: true })
   }
 
@@ -149,6 +153,8 @@ export default function ItineraryItemEditor() {
         <input id="it2" type="text" value={description} maxLength={200} onChange={e => setDescription(e.target.value)} placeholder={category === 'transport' ? 'Venice to Florence' : 'What it is'} />
         <label className="lbl" htmlFor="it3">Vendor</label>
         <input id="it3" type="text" value={vendor} maxLength={80} onChange={e => setVendor(e.target.value)} placeholder="Italo (NTV)" />
+        <label className="lbl" htmlFor="it3b">Booking code (optional)</label>
+        <input id="it3b" type="text" value={bookingRef} maxLength={60} autoComplete="off" onChange={e => setBookingRef(e.target.value)} placeholder="Confirmation or PNR, e.g. ABC123" />
 
         <div className="row2">
           <div><label className="lbl" htmlFor="isd">{category === 'stay' ? 'Check-in date' : 'Starts'}</label><input type="date" id="isd" value={startsOn} onChange={e => setStartsOn(e.target.value)} /></div>

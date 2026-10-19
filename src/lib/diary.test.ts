@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { diaryPath, matchDiary, sortDiary, splitPeople, type DiaryEntry } from './diary'
+import { byLink, diaryPath, matchDiary, sortDiary, splitPeople, type DiaryEntry } from './diary'
 
-const e = (o: Partial<DiaryEntry>): DiaryEntry => ({ id: 'x', itinerary_id: null, title: 't', description: '', place: '', entry_on: '2026-05-01', entry_at: null, people: [], notes: '', shared: false, created_by: 'u', created_at: '2026-05-01T00:00:00Z', ...o })
+const e = (o: Partial<DiaryEntry>): DiaryEntry => ({ id: 'x', itinerary_id: null, group_id: null, title: 't', description: '', place: '', entry_on: '2026-05-01', entry_at: null, people: [], notes: '', shared: false, created_by: 'u', created_at: '2026-05-01T00:00:00Z', ...o })
 
 describe('diary helpers', () => {
   it('sorts newest day first, then latest time', () => {
@@ -19,5 +19,12 @@ describe('diary helpers', () => {
   })
   it('builds a storage path under the entry id with a safe name', () => {
     expect(diaryPath('E1', 'a b/../c.jpg', 'u')).toBe('E1/u-a b_.._c.jpg')
+  })
+  it('filters by link: all, standalone, a trip or a group', () => {
+    const rows = [e({ id: 'a' }), e({ id: 'b', itinerary_id: 'T' }), e({ id: 'c', group_id: 'G' }), e({ id: 'd', itinerary_id: 'T', group_id: 'G' })]
+    expect(byLink(rows, 'all')).toHaveLength(4)
+    expect(byLink(rows, 'standalone').map(x => x.id)).toEqual(['a'])
+    expect(byLink(rows, 'T').map(x => x.id)).toEqual(['b', 'd'])
+    expect(byLink(rows, 'G').map(x => x.id)).toEqual(['c', 'd'])
   })
 })

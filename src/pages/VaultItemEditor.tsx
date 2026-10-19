@@ -23,6 +23,7 @@ export default function VaultItemEditor() {
   const [type, setType] = useState<ItemType>(existing?.type ?? 'ticket')
   const [title, setTitle] = useState(existing?.title ?? '')
   const [description, setDescription] = useState(existing?.description ?? '')
+  const [bookingRef, setBookingRef] = useState(existing?.booking_ref ?? '')
   const [startsOn, setStartsOn] = useState(existing?.starts_on ?? '')
   const [startsAt, setStartsAt] = useState((existing?.starts_at ?? '').slice(0, 5))
   const [endsOn, setEndsOn] = useState(existing?.ends_on ?? '')
@@ -70,7 +71,7 @@ export default function VaultItemEditor() {
     if (endsOn && startsOn && endsOn < startsOn) { setError('The end date is before the start.'); return }
     setBusy(true); setError(null)
     const row = {
-      type, title: title.trim(), description: description.trim(), starts_on: strOrNull(startsOn), starts_at: strOrNull(startsAt), ends_on: showEnd ? strOrNull(endsOn) : null, ends_at: showEnd ? strOrNull(endsAt) : null,
+      type, title: title.trim(), description: description.trim(), booking_ref: bookingRef.trim(), starts_on: strOrNull(startsOn), starts_at: strOrNull(startsAt), ends_on: showEnd ? strOrNull(endsOn) : null, ends_at: showEnd ? strOrNull(endsAt) : null,
       place: place.trim(), address: address.trim(), website: website.trim(), notes: notes.trim(), private: v.personal ? false : priv,
     }
     let id = existing?.id
@@ -127,6 +128,8 @@ export default function VaultItemEditor() {
         <input id="vt" type="text" value={title} maxLength={120} onChange={e => setTitle(e.target.value)} placeholder={type === 'stay' ? 'Hotel Roma Centro' : type === 'ticket' ? 'Italo' : 'Name'} autoFocus={!existing} />
         <label className="lbl" htmlFor="vde">Description</label>
         <input id="vde" type="text" value={description} maxLength={200} onChange={e => setDescription(e.target.value)} placeholder={type === 'stay' ? '3 nights, breakfast included' : type === 'ticket' ? 'Venice to Florence' : 'What it is'} />
+        <label className="lbl" htmlFor="vbr">Booking code (optional)</label>
+        <input id="vbr" type="text" value={bookingRef} maxLength={60} autoComplete="off" onChange={e => setBookingRef(e.target.value)} placeholder="Confirmation or PNR, e.g. ABC123" />
 
         <div className="row2">
           <div><label className="lbl" htmlFor="vd">{stay ? 'Check-in date' : 'Date'}</label><input type="date" id="vd" value={startsOn} onChange={e => setStartsOn(e.target.value)} /></div>

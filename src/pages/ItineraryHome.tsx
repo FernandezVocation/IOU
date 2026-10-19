@@ -3,7 +3,7 @@ import { spendLabel, type ItemSpend } from '../lib/itinerarySpend'
 import { Link } from 'react-router-dom'
 import GroupIcon from '../components/GroupIcon'
 import CategoryIcon from '../components/CategoryIcon'
-import { arrange, CATEGORIES, directionsUrl, filterItems, kindLabel, NO_FILTERS, peopleIn, placeOf, type Arrange, type Filters, type ItineraryItem } from '../lib/itinerary'
+import { arrange, CATEGORIES, directionsUrl, filterItems, kindLabel, NO_FILTERS, peopleIn, placeOf, subtypesIn, type Arrange, type Filters, type ItineraryItem } from '../lib/itinerary'
 import { fmtDate, fmtTime } from '../lib/format'
 import { useItinerary } from './ItineraryShell'
 import ItinerarySettings from '../components/ItinerarySettings'
@@ -17,7 +17,7 @@ function Row({ iid, it, by, cost }: { iid: string; it: ItineraryItem; by: Arrang
   const dir = directionsUrl(it)
   const shortDate = it.starts_on ? fmtDate(it.starts_on).replace(/^[^,]+, /, '') : ''
   const route = it.from_place && it.to_place ? `${it.from_place} → ${it.to_place}` : ''
-  const sub = [by === 'type' ? '' : kindLabel(it), by === 'place' ? '' : route || placeOf(it), it.people.length ? it.people.join(', ') : ''].filter(Boolean).join(' · ')
+  const sub = [by === 'type' || by === 'kind' ? '' : kindLabel(it), it.booking_ref ? `Ref ${it.booking_ref}` : '', by === 'place' ? '' : route || placeOf(it), it.people.length ? it.people.join(', ') : ''].filter(Boolean).join(' · ')
   return (
     <div className="vrow">
       <Link className="vmain" to={`/itinerary/${iid}/item/${it.id}`}>
@@ -43,6 +43,7 @@ export default function ItineraryHome() {
   const it = data.itinerary
 
   const present = useMemo(() => CATEGORIES.filter(c => data.items.some(i => i.category === c.id)), [data.items])
+  const subs = useMemo(() => subtypesIn(data.items, f.category), [data.items, f.category])
   const names = useMemo(() => peopleIn(data.items), [data.items])
   const spend = data.spend
   const anySpend = !!spend && Object.keys(spend.byItem).length > 0
@@ -67,7 +68,6 @@ export default function ItineraryHome() {
             </div>
           </div>
           <div className="vtools">
-            <Link className="btn small" to={`/diary?trip=${it.id}`} aria-label="Trip diary">Diary</Link>
             <button className="btn small" onClick={() => setSheet('export')} aria-label="Export the plan">Export</button>
             {data.isAdmin && <button className="btn small" onClick={() => setSheet('share')} aria-label="Read-only links">Share</button>}
             <button className="btn small" onClick={() => setSheet('settings')} aria-label="Itinerary settings">People</button>
@@ -75,15 +75,21 @@ export default function ItineraryHome() {
         </div>
 
         <div className="seg" role="group" aria-label="Arrange by">
-          {([['date', 'Date'], ['place', 'Places'], ['type', 'Type']] as Array<[Arrange, string]>).map(([k, l]) => <button key={k} aria-pressed={by === k} onClick={() => setBy(k)}>{l}</button>)}
+          {([['date', 'Date'], ['place', 'Places'], ['type', 'Type'], ['kind', 'Subtype']] as Array<[Arrange, string]>).map(([k, l]) => <button key={k} aria-pressed={by === k} onClick={() => setBy(k)}>{l}</button>)}
         </div>
         {anySpend && (
           <label className="radio" style={{ marginTop: 10 }}><input type="checkbox" checked={amounts} onChange={toggleAmounts} />Show what each item cost<span className="muted small"> · group members only</span></label>
         )}
         {present.length > 1 && (
           <div className="chips" role="group" aria-label="Filter by category">
-            <button className="chip" aria-pressed={f.category === 'all'} onClick={() => setF({ ...f, category: 'all' })}>All</button>
-            {present.map(c => <button key={c.id} className="chip" aria-pressed={f.category === c.id} onClick={() => setF({ ...f, category: c.id })}>{c.plural}</button>)}
+            <button className="chip" aria-pressed={f.category === 'all'} onClick={() => setF({ ...f, category: 'all', subtype: '' })}>All</button>
+            {present.map(c => <button key={c.id} className="chip" aria-pressed={f.category === c.id} onClick={() => setF({ ...f, category: c.id, subtype: '' })}>{c.plural}</button>)}
+          </div>
+        )}
+        {subs.length > 1 && (
+          <div className="chips" role="group" aria-label="Filter by subtype">
+            <button className="chip" aria-pressed={f.subtype === ''} onClick={() => setF({ ...f, subtype: '' })}>Any kind</button>
+            {subs.map(n => <button key={n} className="chip" aria-pressed={f.subtype === n} onClick={() => setF({ ...f, subtype: f.subtype === n ? '' : n })}>{n}</button>)}
           </div>
         )}
         {names.length > 1 && (

@@ -15,6 +15,7 @@ export default function DiaryEntryPage() {
   const [photos, setPhotos] = useState<DiaryPhoto[]>([])
   const [urls, setUrls] = useState<Record<string, string>>({})
   const [trip, setTrip] = useState('')
+  const [group, setGroup] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -24,12 +25,13 @@ export default function DiaryEntryPage() {
       const row = (r.data as DiaryEntry | null) ?? null
       setE(row)
       if (!row) return
-      const [p, t] = await Promise.all([
+      const [p, t, g] = await Promise.all([
         supabase.from('diary_photos').select('id, entry_id, path, name, mime, caption').eq('entry_id', id).order('path'),
         row.itinerary_id ? supabase.from('itineraries').select('name').eq('id', row.itinerary_id).maybeSingle() : Promise.resolve({ data: null }),
+        row.group_id ? supabase.from('groups').select('name').eq('id', row.group_id).maybeSingle() : Promise.resolve({ data: null }),
       ])
       const list = (p.data ?? []) as DiaryPhoto[]
-      setPhotos(list); setTrip((t.data as { name: string } | null)?.name ?? '')
+      setPhotos(list); setTrip((t.data as { name: string } | null)?.name ?? ''); setGroup((g.data as { name: string } | null)?.name ?? '')
       setUrls(await signedPhotoUrls(list.map(x => x.path)))
     })()
   }, [id])
@@ -45,16 +47,16 @@ export default function DiaryEntryPage() {
     if (d.error) { setError(friendly(d.error)); return }
     if (paths.length) await supabase.storage.from('diary').remove(paths)
     toast('Entry deleted.')
-    nav(e.itinerary_id ? '/diary?trip=' + e.itinerary_id : '/diary', { replace: true })
+    nav('/diary', { replace: true })
   }
 
   return (
     <div className="app">
-      <div className="top"><div><Link className="backlink" to={e.itinerary_id ? '/diary?trip=' + e.itinerary_id : '/diary'}>← Diary</Link><h1>{e.title}</h1>
+      <div className="top"><div><Link className="backlink" to="/diary">← Diary</Link><h1>{e.title}</h1>
         <div className="sub">{fmtDate(e.entry_on)}{e.entry_at ? ' · ' + fmtTime(e.entry_at) : ''}{e.place ? ' · ' + e.place : ''}</div></div></div>
       {error && <div className="notice err" role="alert">{error}</div>}
       <div className="panel">
-        <div>{e.shared ? <em className="pv amt">Shared with {trip || 'the trip'}</em> : <em className="pv">Only me</em>}</div>
+        <div>{e.shared ? <em className="pv amt">Shared with {[trip, group].filter(Boolean).join(' and ') || 'the trip'}</em> : <em className="pv">Only me</em>}</div>
         {e.description && <p style={{ whiteSpace: 'pre-wrap' }}>{e.description}</p>}
         {e.people.length > 0 && <p className="muted small">With {e.people.join(', ')}</p>}
         {e.notes && <><span className="lbl">Notes</span><p style={{ whiteSpace: 'pre-wrap' }}>{e.notes}</p></>}

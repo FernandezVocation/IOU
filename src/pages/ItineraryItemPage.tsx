@@ -83,6 +83,7 @@ export default function ItineraryItemPage() {
         {it.place && <div><span>Place</span><b>{it.place}</b></div>}
         {it.address && <div><span>Address</span><b>{it.address}</b></div>}
         {it.vendor && <div><span>Vendor</span><b>{it.vendor}</b></div>}
+        {it.booking_ref && <div><span>Booking code</span><b>{it.booking_ref}</b></div>}
         {site && <div><span>Website</span><b>{it.website}</b></div>}
         {it.people.length > 0 && <div><span>Who</span><b>{it.people.join(', ')}</b></div>}
         {it.notes && <div><span>Notes</span><b style={{ whiteSpace: 'pre-wrap' }}>{it.notes}</b></div>}
@@ -91,7 +92,7 @@ export default function ItineraryItemPage() {
 
       {data.spend && home.group_id && (() => {
         const sp = data.spend!.byItem[it.id]
-        const qs = new URLSearchParams({ plan: it.id, vendor: it.title, ...(it.starts_on ? { date: it.starts_on } : {}), ...(it.starts_at ? { time: it.starts_at.slice(0, 5) } : {}) }).toString()
+        const qs = new URLSearchParams({ plan: it.id, vendor: it.title, ...(it.booking_ref ? { ref: it.booking_ref } : {}), ...(it.starts_on ? { date: it.starts_on } : {}), ...(it.starts_at ? { time: it.starts_at.slice(0, 5) } : {}) }).toString()
         return (
           <div className="panel" style={{ marginTop: 12 }}>
             <div className="muted small">Expenses for this item <span>· group members only</span></div>

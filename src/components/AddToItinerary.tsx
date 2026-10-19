@@ -30,7 +30,7 @@ export default function AddToItinerary({ item, onClose }: { item: VaultItem; onC
     const q = new URLSearchParams({ from: item.id, category: g.category })
     const set = (k: string, v: string | null) => { if (v) q.set(k, v) }
     set('subtype', g.subtype)
-    set('title', item.title); set('description', item.description)
+    set('title', item.title); set('description', item.description); set('ref', item.booking_ref ?? '')
     set('date', item.starts_on); set('time', item.starts_at?.slice(0, 5) ?? null)
     set('end_date', item.ends_on); set('end_time', item.ends_at?.slice(0, 5) ?? null)
     set('place', item.place); set('address', item.address); set('website', item.website); set('notes', item.notes)

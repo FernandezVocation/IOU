@@ -49,14 +49,14 @@ export default function ItineraryExport({ onClose }: { onClose: () => void }) {
       <div className="sect">
         <h2>Which items</h2>
         <div className="seg" role="group" aria-label="Which items">
-          {([['all', 'All'], ['date', 'Dates'], ['place', 'Places'], ['type', 'Types']] as Array<['all' | Arrange, string]>).map(([k, l]) => <button key={k} type="button" aria-pressed={which === k} onClick={() => pickWhich(k)}>{l}</button>)}
+          {([['all', 'All'], ['date', 'Dates'], ['place', 'Places'], ['type', 'Types'], ['kind', 'Subtypes']] as Array<['all' | Arrange, string]>).map(([k, l]) => <button key={k} type="button" aria-pressed={which === k} onClick={() => pickWhich(k)}>{l}</button>)}
         </div>
         {choices.map(c => (
           <label className="radio" key={c.key}><input type="checkbox" checked={chosen.has(c.key)} onChange={() => toggle(c.key)} />{c.label}<span className="muted small"> · {c.count} {c.count === 1 ? 'item' : 'items'}</span></label>
         ))}
         <h2 style={{ marginTop: 14 }}>Arrange by</h2>
         <div className="seg" role="group" aria-label="Arrange by">
-          {([['date', 'Date'], ['place', 'Place'], ['type', 'Type']] as Array<[Arrange, string]>).map(([k, l]) => <button key={k} type="button" aria-pressed={by === k} onClick={() => setBy(k)}>{l}</button>)}
+          {([['date', 'Date'], ['place', 'Place'], ['type', 'Type'], ['kind', 'Subtype']] as Array<[Arrange, string]>).map(([k, l]) => <button key={k} type="button" aria-pressed={by === k} onClick={() => setBy(k)}>{l}</button>)}
         </div>
       </div>
       <div className="sect">

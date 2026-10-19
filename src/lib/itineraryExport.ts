@@ -10,7 +10,7 @@ export interface ExportOptions {
   only?: { by: Arrange; keys: string[] } | null
 }
 export const exportChoices = (items: ItineraryItem[], by: Arrange) => arrange(items.filter(i => !i.private), by).map(s => ({ key: s.key, label: s.label, count: s.items.length }))
-export interface ExportEntry { time: string; title: string; lines: string[] }
+export interface ExportEntry { time: string; title: string; /** The description, shown prominently (it is often the flight or train number). */ desc: string; lines: string[] }
 export interface ExportDay { heading: string; sub: string; entries: ExportEntry[] }
 export interface ExportModel { title: string; subtitle: string; days: ExportDay[] }
 
@@ -30,7 +30,8 @@ export function buildExportModel(name: string, items: ItineraryItem[], opts: Exp
       const when = whenLabel(i)
       const cost = opts.amounts && spend?.byItem[i.id] ? spendLabel(spend.byItem[i.id], spend.currency) : ''
       const lines = [
-        [kindLabel(i), i.description].filter(Boolean).join(' · '),
+        kindLabel(i),
+        i.booking_ref ? `Booking code: ${i.booking_ref}` : '',
         route,
         [i.place, i.address].filter(Boolean).join(', '),
         i.vendor ? `Vendor: ${i.vendor}` : '',
@@ -40,7 +41,7 @@ export function buildExportModel(name: string, items: ItineraryItem[], opts: Exp
         opts.notes && i.notes ? `Notes: ${i.notes}` : '',
         cost ? `Cost: ${cost}` : '',
       ].filter(Boolean)
-      return { time: i.starts_at ? fmtTime(i.starts_at) : '', title: i.title, lines }
+      return { time: i.starts_at ? fmtTime(i.starts_at) : '', title: i.title, desc: i.description, lines }
     }),
   }))
   const d = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
@@ -52,8 +53,8 @@ export const exportFileName = (name: string, ext: string) => (name.replace(/[^\w
 /* ───────────── Word (.docx), built by hand with JSZip so no new package is needed ───────────── */
 // eslint-disable-next-line no-control-regex
 const xml = (s: string) => s.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-const run = (t: string, o: { b?: boolean; sz?: number; color?: string } = {}) =>
-  `<w:r><w:rPr>${o.b ? '<w:b/>' : ''}${o.color ? `<w:color w:val="${o.color}"/>` : ''}${o.sz ? `<w:sz w:val="${o.sz}"/>` : ''}</w:rPr><w:t xml:space="preserve">${xml(t)}</w:t></w:r>`
+const run = (t: string, o: { b?: boolean; sz?: number; color?: string; shade?: string } = {}) =>
+  `<w:r><w:rPr>${o.b ? '<w:b/>' : ''}${o.color ? `<w:color w:val="${o.color}"/>` : ''}${o.sz ? `<w:sz w:val="${o.sz}"/>` : ''}${o.shade ? `<w:shd w:val="clear" w:color="auto" w:fill="${o.shade}"/>` : ''}</w:rPr><w:t xml:space="preserve">${xml(t)}</w:t></w:r>`
 const para = (runs: string, o: { before?: number; after?: number; keep?: boolean; indent?: number; style?: string } = {}) =>
   `<w:p><w:pPr>${o.style ? `<w:pStyle w:val="${o.style}"/>` : ''}${o.keep ? '<w:keepNext/>' : ''}<w:spacing w:before="${o.before ?? 0}" w:after="${o.after ?? 60}"/>${o.indent ? `<w:ind w:left="${o.indent}"/>` : ''}</w:pPr>${runs}</w:p>`
 
@@ -66,6 +67,7 @@ export function docxDocumentXml(m: ExportModel): string {
     body.push(para(run(d.heading, { b: true, sz: 28 }) + (d.sub ? run('   ' + d.sub, { sz: 18, color: '5F6B66' }) : ''), { before: 280, after: 80, keep: true, style: 'Heading1' }))
     for (const e of d.entries) {
       body.push(para((e.time ? run(e.time + '   ', { b: true, color: '2B44FF' }) : '') + run(e.title, { b: true, sz: 24 }), { before: 100, after: 20, keep: true }))
+      if (e.desc) body.push(para(run(' ' + e.desc + ' ', { b: true, sz: 22, color: '0E7C61', shade: 'DDF3EA' }), { after: 40, indent: 360 }))
       for (const l of e.lines) body.push(para(run(l, { sz: 20 }), { after: 20, indent: 360 }))
     }
   }
@@ -104,9 +106,18 @@ export async function buildItineraryPdf(m: ExportModel): Promise<Blob> {
     y += 6
     for (const e of d.entries) {
       const lines = e.lines.flatMap(l => doc.splitTextToSize(l1(l), W - 2 * mg - 28) as string[])
-      need(7 + lines.length * 4.2)
+      const desc = e.desc ? (doc.splitTextToSize(l1(e.desc), W - 2 * mg - 34) as string[]) : []
+      need(7 + lines.length * 4.2 + (desc.length ? desc.length * 5 + 3 : 0))
       doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...ACCENT); if (e.time) doc.text(l1(e.time), mg, y)
       doc.setTextColor(...INK); doc.setFontSize(11); doc.text(l1(e.title), mg + 24, y, { maxWidth: W - 2 * mg - 24 }); y += 5
+      if (desc.length) {
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5)
+        const w = Math.min(W - 2 * mg - 24, Math.max(...desc.map(l => doc.getTextWidth(l))) + 6)
+        doc.setFillColor(221, 243, 234); doc.roundedRect(mg + 24, y - 3.6, w, desc.length * 5 + 1.4, 1.5, 1.5, 'F')
+        doc.setTextColor(14, 124, 97)
+        for (const l of desc) { doc.text(l, mg + 27, y); y += 5 }
+        y += 1
+      }
       doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...MUTED)
       for (const l of lines) { need(5); doc.text(l, mg + 24, y); y += 4.2 }
       y += 2.5

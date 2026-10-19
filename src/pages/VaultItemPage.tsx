@@ -59,7 +59,7 @@ export default function VaultItemPage() {
     nav(back, { replace: true })
   }
 
-  const expenseQs = new URLSearchParams({ item: it.id, vendor: it.title, ...((it.description || it.place) ? { description: it.description || it.place } : {}), ...(it.starts_on ? { date: it.starts_on } : {}), ...(it.starts_at ? { time: it.starts_at.slice(0, 5) } : {}) }).toString()
+  const expenseQs = new URLSearchParams({ item: it.id, vendor: it.title, ...(it.booking_ref ? { ref: it.booking_ref } : {}), ...((it.description || it.place) ? { description: it.description || it.place } : {}), ...(it.starts_on ? { date: it.starts_on } : {}), ...(it.starts_at ? { time: it.starts_at.slice(0, 5) } : {}) }).toString()
 
   return (
     <div className="app">
@@ -96,6 +96,7 @@ export default function VaultItemPage() {
 
       <div className="panel vfacts">
         {when && <div><span>When</span><b>{when}<small> · local time at the place</small></b></div>}
+        {it.booking_ref && <div><span>Booking code</span><b>{it.booking_ref}</b></div>}
         {it.place && <div><span>Place</span><b>{it.place}</b></div>}
         {it.address && <div><span>Address</span><b>{it.address}</b></div>}
         {site && <div><span>Website</span><b>{it.website}</b></div>}

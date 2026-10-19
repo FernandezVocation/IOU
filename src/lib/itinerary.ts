@@ -22,7 +22,7 @@ export interface ItineraryRow { id: string; name: string; icon: string | null; c
 export interface ItineraryMember { user_id: string; role: 'owner' | 'admin' | 'member'; name: string }
 export interface ItineraryItem {
   id: string; itinerary_id: string; category: Category; category_label: string; subtype: string
-  title: string; description: string; vendor: string
+  title: string; description: string; vendor: string; booking_ref?: string
   starts_on: string | null; starts_at: string | null; ends_on: string | null; ends_at: string | null
   place: string; address: string; from_place: string; to_place: string; website: string; notes: string
   people: string[]; private: boolean; vault_item_id: string | null; created_by: string
@@ -49,7 +49,7 @@ export function directionsUrl(i: Pick<ItineraryItem, 'address' | 'place' | 'from
   return q ? 'https://www.google.com/maps/dir/?api=1&destination=' + enc(q) : null
 }
 
-export type Arrange = 'date' | 'place' | 'type'
+export type Arrange = 'date' | 'place' | 'type' | 'kind'
 export interface Section { key: string; label: string; sub?: string; items: ItineraryItem[] }
 
 const cmp = (a: ItineraryItem, b: ItineraryItem) =>
@@ -68,11 +68,16 @@ export function arrange(items: ItineraryItem[], by: Arrange): Section[] {
   for (const it of sortItems(items)) {
     if (by === 'date') it.starts_on ? add(it.starts_on, fmtDate(it.starts_on), it) : add('~', 'No date', it)
     else if (by === 'place') { const p = placeOf(it); add(p ? p.toLowerCase() : '~', p || 'No place', it) }
+    else if (by === 'kind') { const k = kindLabel(it); add(k.toLowerCase(), k, it) }
     else { const c = categoryOf(it.category); const k = it.category === 'custom' ? 'custom:' + categoryName(it).toLowerCase() : c.id; add(k, it.category === 'custom' ? categoryName(it) : c.plural, it) }
   }
   const list = [...out.values()]
   if (by === 'date') for (const s of list) s.sub = [...new Set(s.items.map(placeOf).filter(Boolean))].join(', ') || undefined
   if (by === 'place') list.sort((a, b) => (a.key === '~' ? 1 : b.key === '~' ? -1 : a.label.localeCompare(b.label)))
+  if (by === 'kind') list.sort((a, b) => {
+    const ci = (s: Section) => { const i = s.items[0]; return i.category === 'custom' ? CATEGORIES.length : CATEGORIES.findIndex(c => c.id === i.category) }
+    return ci(a) - ci(b) || a.label.localeCompare(b.label)
+  })
   if (by === 'type') list.sort((a, b) => {
     const ia = CATEGORIES.findIndex(c => c.id === (a.key.startsWith('custom:') ? 'custom' : a.key)), ib = CATEGORIES.findIndex(c => c.id === (b.key.startsWith('custom:') ? 'custom' : b.key))
     return ia - ib || a.label.localeCompare(b.label)
@@ -80,15 +85,20 @@ export function arrange(items: ItineraryItem[], by: Arrange): Section[] {
   return list
 }
 
-export interface Filters { category: 'all' | Category; person: string; q: string }
-export const NO_FILTERS: Filters = { category: 'all', person: '', q: '' }
+export interface Filters { category: 'all' | Category; subtype: string; person: string; q: string }
+export const NO_FILTERS: Filters = { category: 'all', subtype: '', person: '', q: '' }
 
 export function filterItems(items: ItineraryItem[], f: Filters): ItineraryItem[] {
   const s = f.q.trim().toLowerCase()
   return items.filter(i => (f.category === 'all' || i.category === f.category)
+    && (!f.subtype || i.subtype.trim().toLowerCase() === f.subtype.toLowerCase())
     && (!f.person || i.people.some(p => p.toLowerCase() === f.person.toLowerCase()))
-    && (!s || [i.title, i.description, i.vendor, i.place, i.address, i.from_place, i.to_place, i.notes, kindLabel(i), i.people.join(' ')].join(' ').toLowerCase().includes(s)))
+    && (!s || [i.title, i.description, i.vendor, i.booking_ref ?? '', i.place, i.address, i.from_place, i.to_place, i.notes, kindLabel(i), i.people.join(' ')].join(' ').toLowerCase().includes(s)))
 }
+
+/** Subtypes in use (optionally within one category), for the subtype filter. */
+export const subtypesIn = (items: Array<Pick<ItineraryItem, 'category' | 'subtype'>>, category: 'all' | Category = 'all') =>
+  [...new Set(items.filter(i => category === 'all' || i.category === category).map(i => i.subtype.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b))
 
 /** Everyone named on any item, for the person filter. */
 export const peopleIn = (items: Array<Pick<ItineraryItem, 'people'>>) => [...new Set(items.flatMap(i => i.people))].sort((a, b) => a.localeCompare(b))
@@ -106,6 +116,16 @@ export function categoryForVaultType(type: string): { category: Category; subtyp
     case 'entry': return { category: 'attractions', subtype: '' }
     default: return { category: 'custom', subtype: '' }
   }
+}
+
+/** Start an itinerary item from an expense's category. Everything stays editable. */
+export function categoryForExpense(category: string, subcategory = ''): { category: Category; category_label: string; subtype: string } {
+  const sub = subcategory.trim()
+  const pickSub = (c: Category) => { const subs = categoryOf(c).subs; return subs.find(x => x.toLowerCase() === sub.toLowerCase() || x.toLowerCase() === sub.toLowerCase().replace(/s$/, '')) ?? '' }
+  const map: Record<string, Category> = { Transportation: 'transport', Housing: 'stay', Food: 'food', Drinks: 'food', Grocery: 'food', Attractions: 'attractions', Activities: 'activities', Entertainment: 'activities', Shopping: 'shopping', Souvenirs: 'shopping' }
+  const c = map[category]
+  if (c) return { category: c, category_label: '', subtype: pickSub(c) }
+  return { category: 'custom', category_label: category.trim().slice(0, 40), subtype: '' }
 }
 
 export interface SharedItineraryItem extends Omit<ItineraryItem, 'itinerary_id' | 'private' | 'vault_item_id' | 'created_by'> { has_ticket: boolean }

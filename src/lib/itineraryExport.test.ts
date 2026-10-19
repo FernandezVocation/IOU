@@ -68,6 +68,17 @@ describe('files', () => {
     expect(Object.keys(z.files)).toEqual(expect.arrayContaining(['[Content_Types].xml', '_rels/.rels', 'word/document.xml', 'word/styles.xml', 'word/_rels/document.xml.rels']))
     expect(await z.file('word/document.xml')!.async('string')).toContain('Rome &amp; &lt;Venice&gt;')
   })
+  it('puts the description and booking code in the export, the description set apart', async () => {
+    const m = buildExportModel('Italy', [I({ id: 'q', title: 'Italo', description: 'Train 9405', booking_ref: 'XK92LM' })], { notes: false, amounts: false }, null)
+    expect(m.days[0].entries[0].desc).toBe('Train 9405')
+    expect(m.days[0].entries[0].lines).toContain('Booking code: XK92LM')
+    const xml = docxDocumentXml(m)
+    expect(xml).toMatch(/<w:shd [^>]*w:fill="DDF3EA"\/><\/w:rPr><w:t xml:space="preserve"> Train 9405 </)
+  })
+  it('lists subtypes to pick from', () => {
+    const rows = [I({ id: 'a', title: 'Italo' }), I({ id: 'b', title: 'Hotel', category: 'stay', subtype: 'Hotel' }), I({ id: 'c', title: 'Gelato', category: 'food', subtype: '' })]
+    expect(exportChoices(rows, 'kind').map(c => c.label)).toEqual(['Transport · Train', 'Stay · Hotel', 'Food'])
+  })
   it('writes a PDF', async () => {
     const m = buildExportModel('Italy', items, { notes: true, amounts: false }, null)
     const buf = new Uint8Array(await (await buildItineraryPdf(m)).arrayBuffer())

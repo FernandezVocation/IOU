@@ -1,13 +1,19 @@
 import { supabase } from './supabase'
 
 export interface DiaryEntry {
-  id: string; itinerary_id: string | null; title: string; description: string; place: string
+  id: string; itinerary_id: string | null; group_id: string | null; title: string; description: string; place: string
   entry_on: string; entry_at: string | null; people: string[]; notes: string; shared: boolean
   created_by: string; created_at: string
 }
 export interface DiaryPhoto { id: string; entry_id: string; path: string; name: string; mime: string; caption: string }
 
-export const DIARY_COLS = 'id, itinerary_id, title, description, place, entry_on, entry_at, people, notes, shared, created_by, created_at'
+export const DIARY_COLS = 'id, itinerary_id, group_id, title, description, place, entry_on, entry_at, people, notes, shared, created_by, created_at'
+export type DiaryLinkFilter = 'all' | 'standalone' | string   // a trip or group id
+
+/** Entries for one link: everything, only standalone ones, or those tied to a given trip/group id. */
+export const byLink = (rows: DiaryEntry[], f: DiaryLinkFilter) =>
+  f === 'all' ? rows : f === 'standalone' ? rows.filter(r => !r.itinerary_id && !r.group_id) : rows.filter(r => r.itinerary_id === f || r.group_id === f)
+
 export const MAX_DIARY_PHOTOS = 10
 
 /** Newest day first; within a day, latest time first, then newest written. */

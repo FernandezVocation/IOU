@@ -11,6 +11,7 @@ import CategoryIcon from '../components/CategoryIcon'
 import TypeIcon from '../components/TypeIcon'
 import { Avatar, ConfirmDialog, useToast } from '../components/ui'
 import CategoryPicker from '../components/CategoryPicker'
+import AddExpenseToItinerary from '../components/AddExpenseToItinerary'
 import { useAuth } from '../lib/auth'
 import { userName } from '../lib/payments'
 import { canEditGroup, canModifyExpense } from '../lib/access'
@@ -18,7 +19,7 @@ import { useGroup } from './GroupShell'
 
 interface NewFile { blob: Blob; type: string; name: string; preview: string }
 interface Form {
-  date: string; time: string; vendor: string; description: string; location: string; category: string; subcategory: string; notes: string
+  date: string; time: string; vendor: string; description: string; location: string; category: string; subcategory: string; notes: string; ref: string
   amount: string; foreign: boolean; pick: string; otherCur: string; settled: string; charged: string
   payerId: string; mode: SplitMode; entries: Record<string, string>
   status: ExpenseStatus; itemId: string; planId: string
@@ -55,6 +56,7 @@ export default function ExpenseEditor() {
   const toast = useToast()
   const { user } = useAuth()
   const [confirmDel, setConfirmDel] = useState(false)
+  const [addPlan, setAddPlan] = useState(false)
   const g = data.group, base = g.currency
   const { items: vaultItems, vaultId } = useGroupVaultItems(g.id, true)
   const planItems = useGroupItineraryItems(g.id, true)
@@ -82,7 +84,7 @@ export default function ExpenseEditor() {
     const inList = COMMON_CURRENCIES.includes(startCur)
     setForm({
       date: existing?.spent_on ?? (/^\d{4}-\d{2}-\d{2}$/.test(qs.get('date') ?? '') ? qs.get('date')! : todayStr()), time: existing ? (existing.spent_at ?? '').slice(0, 5) : (/^\d{2}:\d{2}$/.test(qs.get('time') ?? '') ? qs.get('time')! : nowTime()),
-      vendor: existing?.vendor ?? (qs.get('vendor') ?? '').slice(0, 120), description: existing?.description ?? (qs.get('description') ?? '').slice(0, 200), location: existing?.location ?? '', category: existing?.category ?? '', subcategory: existing?.subcategory ?? '', notes: existing?.notes ?? '',
+      vendor: existing?.vendor ?? (qs.get('vendor') ?? '').slice(0, 120), description: existing?.description ?? (qs.get('description') ?? '').slice(0, 200), location: existing?.location ?? '', category: existing?.category ?? '', subcategory: existing?.subcategory ?? '', notes: existing?.notes ?? '', ref: existing?.booking_ref ?? (qs.get('ref') ?? '').slice(0, 60),
       amount: existing ? String(existing.amount) : '', foreign, pick: inList ? startCur : '__other', otherCur: inList ? '' : startCur,
       settled: existing?.settled_amount != null ? String(existing.settled_amount) : '',
       charged: existing?.charged_amount != null ? String(existing.charged_amount) : '',
@@ -184,7 +186,7 @@ export default function ExpenseEditor() {
     const splits = ids.map(i => ({ traveler_id: i, value: f.mode === 'equal' ? 1 : parseNum(f.entries[i]) }))
     const { error } = await supabase.rpc('save_expense', {
       p_id: id, p_group: g.id,
-      p: { spent_on: f.date, spent_at: f.time || '', vendor: f.vendor.trim(), description: f.description.trim(), location: f.location.trim(), category: f.category.trim(), subcategory: f.category.trim() ? f.subcategory.trim() : '', notes: f.notes.trim(), amount: amountNum, currency: cur, settled_amount: settled, charged_amount: charged?.amount ?? null, charged_currency: charged?.currency ?? null, payer_id: f.payerId, split_mode: f.mode, status: f.status, vault_item_id: f.itemId || null, itinerary_item_id: f.planId || null },
+      p: { spent_on: f.date, spent_at: f.time || '', vendor: f.vendor.trim(), description: f.description.trim(), location: f.location.trim(), category: f.category.trim(), subcategory: f.category.trim() ? f.subcategory.trim() : '', notes: f.notes.trim(), amount: amountNum, currency: cur, settled_amount: settled, charged_amount: charged?.amount ?? null, charged_currency: charged?.currency ?? null, payer_id: f.payerId, split_mode: f.mode, status: f.status, vault_item_id: f.itemId || null, itinerary_item_id: f.planId || null, booking_ref: f.ref.trim() },
       p_splits: splits,
     })
     if (error) { toast(friendly(error)); setSaving(false); return }
@@ -313,6 +315,8 @@ export default function ExpenseEditor() {
         <label className="lbl" htmlFor="description">Description</label>
         <input type="text" id="description" value={f.description} maxLength={200} placeholder="e.g. Florence to Rome" autoComplete="off" onChange={e => set('description', e.target.value)} />
         <datalist id="vendors">{[...new Set(data.expenses.map(e => e.vendor).filter(Boolean))].slice(0, 60).map(x => <option key={x} value={x} />)}</datalist>
+        <label className="lbl" htmlFor="bref">Booking code (optional)</label>
+        <input type="text" id="bref" value={f.ref} maxLength={60} autoComplete="off" onChange={e => set('ref', e.target.value)} placeholder="Confirmation or PNR, e.g. ABC123" />
         <div className="row2">
           <div><label className="lbl" htmlFor="date">Date</label><input type="date" id="date" value={f.date} onChange={e => set('date', e.target.value)} /></div>
           <div><label className="lbl" htmlFor="time">Time</label><input type="time" id="time" value={f.time} onChange={e => set('time', e.target.value)} /></div>
@@ -420,6 +424,11 @@ export default function ExpenseEditor() {
             {existing.updated_by && existing.updated_at !== existing.created_at && <div>Last edited by {userName(data, existing.updated_by, user?.id ?? null)} on {new Date(existing.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</div>}
           </div>
         )}
+        {existing && !readOnly && !existing.itinerary_item_id && (
+          <div style={{ marginTop: 18 }}>
+            <button type="button" className="btn block" onClick={() => setAddPlan(true)}>Add to itinerary</button>
+          </div>
+        )}
         {existing && !readOnly && (
           <div style={{ marginTop: 18 }}>
             <button className="btn danger block" onClick={() => setConfirmDel(true)} disabled={dis}>Delete expense</button>
@@ -427,6 +436,7 @@ export default function ExpenseEditor() {
         )}
         </fieldset>
       </div>
+      {addPlan && existing && <AddExpenseToItinerary expense={existing} groupId={g.id} onClose={() => setAddPlan(false)} />}
       {confirmDel && existing && (
         <ConfirmDialog title="Delete this expense?" busy={saving} onCancel={() => setConfirmDel(false)} onConfirm={remove}>
           <b>{existing.vendor || 'This expense'}</b> ({fmtMoney(toMinor(existing.amount, existing.currency), existing.currency)} on {existing.spent_on})

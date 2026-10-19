@@ -58,6 +58,8 @@ export interface Expense {
   vault_item_id?: string | null
   /** The itinerary item this expense is for, if any. */
   itinerary_item_id?: string | null
+  /** Booking code or confirmation number, as printed on the ticket. */
+  booking_ref?: string
   location: string
   category: string
   /** Optional second level under the category ("Food" › "Dinner"). */

@@ -26,6 +26,8 @@ export default function DiaryEditor() {
   const [people, setPeople] = useState('')
   const [notes, setNotes] = useState('')
   const [trip, setTrip] = useState(sp.get('trip') ?? '')
+  const [grp, setGrp] = useState(sp.get('group') ?? '')
+  const [groups, setGroups] = useState<Array<{ id: string; name: string }>>([])
   const [shared, setShared] = useState(false)
   const [kept, setKept] = useState<DiaryPhoto[]>([])
   const [urls, setUrls] = useState<Record<string, string>>({})
@@ -36,13 +38,15 @@ export default function DiaryEditor() {
   useEffect(() => {
     (async () => {
       const t = await supabase.from('itineraries').select('id, name').order('name')
+      const gq = await supabase.from('groups').select('id, name').order('name')
+      setGroups((gq.data ?? []) as Array<{ id: string; name: string }>)
       setTrips((t.data ?? []) as Array<{ id: string; name: string }>)
       if (!id) return
       const r = await supabase.from('diary_entries').select(DIARY_COLS).eq('id', id).maybeSingle()
       const e = r.data as DiaryEntry | null
       if (!e || e.created_by !== user?.id) { setError('You can only edit your own entries.'); setLoaded(true); return }
       setTitle(e.title); setDescription(e.description); setPlace(e.place); setDay(e.entry_on); setTime(e.entry_at?.slice(0, 5) ?? '')
-      setPeople(e.people.join(', ')); setNotes(e.notes); setTrip(e.itinerary_id ?? ''); setShared(e.shared)
+      setPeople(e.people.join(', ')); setNotes(e.notes); setTrip(e.itinerary_id ?? ''); setGrp(e.group_id ?? ''); setShared(e.shared)
       const p = await supabase.from('diary_photos').select('id, entry_id, path, name, mime, caption').eq('entry_id', id).order('path')
       const list = (p.data ?? []) as DiaryPhoto[]
       setKept(list); setUrls(await signedPhotoUrls(list.map(x => x.path))); setLoaded(true)
@@ -70,7 +74,7 @@ export default function DiaryEditor() {
     setBusy(true); setError(null)
     const row = {
       title: title.trim(), description: description.trim(), place: place.trim(), entry_on: day || todayStr(), entry_at: time || null,
-      people: splitPeople(people), notes: notes.trim(), itinerary_id: trip || null, shared: trip ? shared : false,
+      people: splitPeople(people), notes: notes.trim(), itinerary_id: trip || null, group_id: grp || null, shared: trip || grp ? shared : false,
     }
     let eid = id
     if (id) {
@@ -124,13 +128,18 @@ export default function DiaryEditor() {
         <textarea id="dn" rows={3} value={notes} maxLength={2000} onChange={e => setNotes(e.target.value)} />
         <label className="lbl" htmlFor="dtrip">Trip</label>
         <select id="dtrip" value={trip} onChange={e => setTrip(e.target.value)}>
-          <option value="">No trip (personal)</option>
+          <option value="">No trip</option>
           {trips.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
         </select>
-        {trip && (
-          <label className="chk"><input type="checkbox" checked={shared} onChange={e => setShared(e.target.checked)} /> Share this entry with everyone on the trip</label>
+        <label className="lbl" htmlFor="dgrp">Group</label>
+        <select id="dgrp" value={grp} onChange={e => setGrp(e.target.value)}>
+          <option value="">No group</option>
+          {groups.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+        </select>
+        {(trip || grp) && (
+          <label className="chk"><input type="checkbox" checked={shared} onChange={e => setShared(e.target.checked)} /> Share this entry with everyone on the {trip && grp ? 'trip and group' : trip ? 'trip' : 'group'}</label>
         )}
-        <div className="muted small">{trip && shared ? 'People on the trip can read this entry and its photos. Only you can change it.' : 'Only you can see this entry.'}</div>
+        <div className="muted small">{(trip || grp) && shared ? 'People in the link can read this entry and its photos. Only you can change it.' : 'Only you can see this entry.'}</div>
 
         <span className="lbl">Photos ({count}/{MAX_DIARY_PHOTOS})</span>
         <div className="vgallery">

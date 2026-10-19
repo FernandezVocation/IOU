@@ -31,7 +31,7 @@ export default function ExpensesTab() {
   let list = [...data.expenses]
   if (needOnly) list = list.filter(e => R.calc[e.id]?.status !== 'confirmed')
   const s = q.trim().toLowerCase()
-  if (s) list = list.filter(e => [e.vendor, e.description ?? '', e.location, e.category, e.subcategory ?? '', e.notes, who(data, e.payer_id, false)].join(' ').toLowerCase().includes(s))
+  if (s) list = list.filter(e => [e.vendor, e.booking_ref ?? '', e.description ?? '', e.location, e.category, e.subcategory ?? '', e.notes, who(data, e.payer_id, false)].join(' ').toLowerCase().includes(s))
   list.sort((a, b) => b.spent_on.localeCompare(a.spent_on) || (b.spent_at ?? '').localeCompare(a.spent_at ?? '') || b.created_at.localeCompare(a.created_at))
 
   const groups = new Map<string, Expense[]>()
@@ -81,7 +81,7 @@ function Row({ e, c, item, plan }: { e: Expense; c: Calc; item?: LinkedItem; pla
       {foreign ? (c.status === 'confirmed' ? <div className="sb">{fmtMoney(c.minor as number, cur)}</div>
         : c.status === 'estimated' ? <div className="sb est">≈ {fmtMoney(c.minor as number, cur)} est.</div>
         : <div className="sb est">no rate set</div>) : <div />}
-      <div className="m">{split}{e.location ? ' · ' + e.location : ''}</div>
+      <div className="m">{split}{e.location ? ' · ' + e.location : ''}{e.booking_ref ? ' · Ref ' + e.booking_ref : ''}</div>
     </Link>
   )
 }

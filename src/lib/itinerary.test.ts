@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { arrange, categoryForVaultType, customNames, directionsUrl, filterItems, kindLabel, mapUrl, NO_FILTERS, peopleIn, type ItineraryItem } from './itinerary'
+import { arrange, categoryForExpense, categoryForVaultType, subtypesIn, customNames, directionsUrl, filterItems, kindLabel, mapUrl, NO_FILTERS, peopleIn, type ItineraryItem } from './itinerary'
 
 const I = (o: Partial<ItineraryItem>): ItineraryItem => ({
   id: o.title ?? 'x', itinerary_id: 'it', category: 'transport', category_label: '', subtype: '', title: 'T', description: '', vendor: '',
@@ -67,5 +67,29 @@ describe('Add to itinerary', () => {
     expect(categoryForVaultType('stay').category).toBe('stay')
     expect(categoryForVaultType('reservation')).toEqual({ category: 'food', subtype: 'Restaurant' })
     expect(categoryForVaultType('document').category).toBe('custom')
+  })
+})
+
+describe('subtypes and booking codes', () => {
+  const rows = [I({ title: 'a', subtype: 'Train' }), I({ title: 'b', subtype: 'Flight' }), I({ title: 'c', subtype: 'Train' }), I({ title: 'd', category: 'stay', subtype: 'Hotel' }), I({ title: 'e', category: 'custom', subtype: '' })]
+  it('lists subtypes in use, within one category if asked', () => {
+    expect(subtypesIn(rows)).toEqual(['Flight', 'Hotel', 'Train'])
+    expect(subtypesIn(rows, 'transport')).toEqual(['Flight', 'Train'])
+  })
+  it('filters by subtype, ignoring case', () => {
+    expect(filterItems(rows, { ...NO_FILTERS, subtype: 'train' }).map(i => i.title)).toEqual(['a', 'c'])
+    expect(filterItems(rows, { ...NO_FILTERS, category: 'stay', subtype: 'Train' })).toEqual([])
+  })
+  it('arranges by subtype: one section per kind, in category order', () => {
+    expect(arrange(rows, 'kind').map(s => [s.label, s.items.length])).toEqual([['Transport · Flight', 1], ['Transport · Train', 2], ['Stay · Hotel', 1], ['Custom', 1]])
+  })
+  it('finds an item by its booking code', () => {
+    expect(filterItems([I({ title: 'x', booking_ref: 'PNR55' })], { ...NO_FILTERS, q: 'pnr55' })).toHaveLength(1)
+  })
+  it('starts an item from an expense category', () => {
+    expect(categoryForExpense('Transportation', 'Train')).toEqual({ category: 'transport', category_label: '', subtype: 'Train' })
+    expect(categoryForExpense('Transportation', 'Flights').subtype).toBe('Flight')
+    expect(categoryForExpense('Housing', 'Hotel')).toMatchObject({ category: 'stay', subtype: 'Hotel' })
+    expect(categoryForExpense('Fees', 'Tip')).toEqual({ category: 'custom', category_label: 'Fees', subtype: '' })
   })
 })

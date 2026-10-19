@@ -30,7 +30,7 @@ import { ToastProvider } from '../components/ui'
 beforeEach(() => { writes.length = 0; for (const k of Object.keys(tables)) delete tables[k] })
 afterEach(cleanup)
 
-const entry = (o: Record<string, unknown> = {}) => ({ id: 'd1', itinerary_id: null, title: 'Day one', description: 'It rained.', place: 'Venice', entry_on: '2026-05-01', entry_at: null, people: ['Ann'], notes: '', shared: false, created_by: 'u1', created_at: '', ...o })
+const entry = (o: Record<string, unknown> = {}) => ({ id: 'd1', itinerary_id: null, group_id: null, title: 'Day one', description: 'It rained.', place: 'Venice', entry_on: '2026-05-01', entry_at: null, people: ['Ann'], notes: '', shared: false, created_by: 'u1', created_at: '', ...o })
 const wrap = (path: string, el: JSX.Element, route: string) => render(<ToastProvider><MemoryRouter initialEntries={[path]}><Routes><Route path={route} element={el} /><Route path="*" element={<div>elsewhere</div>} /></Routes></MemoryRouter></ToastProvider>)
 
 describe('diary', () => {
@@ -71,5 +71,29 @@ describe('diary', () => {
     expect(screen.queryByLabelText(/Share this entry/)).toBeNull()
     fireEvent.change(screen.getByLabelText('Trip'), { target: { value: 'i1' } })
     expect(screen.getByLabelText(/Share this entry/)).toBeTruthy()
+  })
+  it('can tie an entry to a group, and then offers sharing', async () => {
+    tables.groups = [{ id: 'g1', name: 'Italy group' }]
+    wrap('/diary/new', <DiaryEditor />, '/diary/new')
+    await screen.findByRole('option', { name: 'Italy group' })
+    expect(screen.queryByLabelText(/Share this entry/)).toBeNull()
+    fireEvent.change(screen.getByLabelText('Group'), { target: { value: 'g1' } })
+    expect(screen.getByLabelText(/Share this entry with everyone on the group/)).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Dinner' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save entry' }))
+    await waitFor(() => expect(writes.some(w => w.op === 'insert')).toBe(true))
+    expect(writes.find(w => w.op === 'insert')!.row).toMatchObject({ group_id: 'g1', itinerary_id: null, shared: false })
+  })
+  it('filters the list by standalone or by group', async () => {
+    tables.diary_entries = [entry({ id: 'a', title: 'Solo' }), entry({ id: 'b', title: 'With group', group_id: 'g1' })]
+    tables.groups = [{ id: 'g1', name: 'Italy group' }]
+    wrap('/diary', <DiaryPage />, '/diary')
+    await screen.findByText('Solo')
+    fireEvent.click(screen.getByRole('button', { name: 'Italy group' }))
+    expect(screen.queryByText('Solo')).toBeNull()
+    expect(screen.getByText('With group')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Standalone' }))
+    expect(screen.getByText('Solo')).toBeTruthy()
+    expect(screen.queryByText('With group')).toBeNull()
   })
 })
