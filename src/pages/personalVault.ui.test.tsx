@@ -17,6 +17,7 @@ vi.mock('../lib/auth', () => ({ useAuth: () => ({ user: { id: 'u1' }, displayNam
 import VaultsPage from './VaultsPage'
 import VaultSettings from '../components/VaultSettings'
 import VaultItemEditor from './VaultItemEditor'
+import VaultItemPage from './VaultItemPage'
 import { VaultContext } from './VaultShell'
 import { ToastProvider } from '../components/ui'
 import type { VaultData } from '../lib/useVault'
@@ -74,5 +75,22 @@ describe('a personal vault', () => {
     cleanup()
     withVault(data(false), <VaultItemEditor />, '/vault/v1/item/new')
     expect(screen.getByText('Who can see it?')).toBeTruthy()
+  })
+})
+
+describe('a personal vault item and expenses', () => {
+  const item = { id: 'i1', vault_id: 'v1', type: 'document', title: 'Insurance card', description: 'Travel policy', starts_on: null, starts_at: null, ends_on: null, ends_at: null, place: '', address: '', website: '', notes: '', private: false, created_by: 'u1', files: [] }
+  const page = (personal: boolean) => withVault({ ...data(personal), items: [item as never] }, <VaultItemPage />, '/vault/v1/item/i1')
+  it('offers Add as expense with a choice of group, though the vault has no group', async () => {
+    tables.groups = [{ id: 'g1', name: 'Italy' }, { id: 'g2', name: 'Home' }]
+    render(<ToastProvider><MemoryRouter initialEntries={['/vault/v1/item/i1']}><VaultContext.Provider value={{ data: { ...data(true), items: [item as never] }, reload: async () => {} }}><Routes><Route path="/vault/:id/item/:iid" element={<VaultItemPage />} /><Route path="/g/:gid/expense/new" element={<div>expense form</div>} /></Routes></VaultContext.Provider></MemoryRouter></ToastProvider>)
+    fireEvent.click(screen.getByRole('button', { name: 'Add as expense' }))
+    expect(await screen.findByLabelText('Which group')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+    await waitFor(() => expect(screen.getByText('expense form')).toBeTruthy())
+  })
+  it('does not show that choice for a group-less ordinary vault', () => {
+    page(false)
+    expect(screen.queryByRole('button', { name: 'Add as expense' })).toBeNull()
   })
 })

@@ -11,25 +11,34 @@ export const STATUSES: Array<{ id: ExpenseStatus; label: string; help: string }>
 ]
 export const statusLabel = (s: string | undefined | null) => STATUSES.find(x => x.id === s)?.label ?? ''
 
-export interface LinkedItem { id: string; title: string; description: string; type: string; starts_on: string | null }
+export interface LinkedItem { id: string; title: string; description: string; type: string; starts_on: string | null; vault_id?: string; personal?: boolean }
 
 /**
- * The vault items of this group's vault that the signed-in person is allowed to see.
- * Row-level rules in the database do the filtering, so an item that is private to someone else simply never comes back
- * (and its expense shows no icon). Skipped entirely when `needed` is false.
+ * The vault items an expense of this group can point at: the group's vault, plus the signed-in person's own private vault.
+ * Row-level rules in the database do the filtering, so an item that is private to someone else, and anyone else's personal
+ * vault, simply never comes back (and its expense shows no icon). Skipped entirely when `needed` is false.
  */
 export function useGroupVaultItems(groupId: string, needed: boolean): { items: LinkedItem[]; vaultId: string | null } {
   const [state, setState] = useState<{ items: LinkedItem[]; vaultId: string | null }>({ items: [], vaultId: null })
   useEffect(() => {
     if (!needed) return
     let live = true
+    const cols = 'id, title, description, type, starts_on'
+    const load = async (vid: string, personal: boolean): Promise<LinkedItem[]> => {
+      const r = await supabase.from('vault_items').select(cols).eq('vault_id', vid).order('starts_on', { ascending: true, nullsFirst: false })
+      return ((r.data ?? []) as LinkedItem[]).map(x => ({ ...x, vault_id: vid, personal }))
+    }
     ;(async () => {
       try {
-        const v = await supabase.from('vaults').select('id').eq('group_id', groupId).maybeSingle()
-        const vid = (v.data as { id: string } | null)?.id ?? null
-        if (!vid) { if (live) setState({ items: [], vaultId: null }); return }
-        const r = await supabase.from('vault_items').select('id, title, description, type, starts_on').eq('vault_id', vid).order('starts_on', { ascending: true, nullsFirst: false })
-        if (live) setState({ items: ((r.data ?? []) as LinkedItem[]), vaultId: vid })
+        const [g, p] = await Promise.all([
+          supabase.from('vaults').select('id').eq('group_id', groupId).maybeSingle(),
+          supabase.from('vaults').select('id').eq('personal', true).maybeSingle().then(r => r, () => ({ data: null })),
+        ])
+        const vid = (g.data as { id: string } | null)?.id ?? null
+        const pid = (p.data as { id: string } | null)?.id ?? null
+        const groupItems = vid ? await load(vid, false) : []
+        const mine = pid && pid !== vid ? await load(pid, true) : []
+        if (live) setState({ items: [...groupItems, ...mine], vaultId: vid })
       } catch { if (live) setState({ items: [], vaultId: null }) }
     })()
     return () => { live = false }

@@ -7,6 +7,7 @@ import TypeIcon from '../components/TypeIcon'
 import QrView from '../components/QrView'
 import { useArm, useToast } from '../components/ui'
 import AddToItinerary from '../components/AddToItinerary'
+import AddAsExpense from '../components/AddAsExpense'
 import { useVault } from './VaultShell'
 
 export default function VaultItemPage() {
@@ -19,6 +20,7 @@ export default function VaultItemPage() {
   const [full, setFull] = useState(false)
   const [busy, setBusy] = useState(false)
   const [addIt, setAddIt] = useState(false)
+  const [addEx, setAddEx] = useState(false)
   const it = data.items.find(i => i.id === iid)
   const v = data.vault
   const back = '/vault/' + v.id
@@ -89,6 +91,7 @@ export default function VaultItemPage() {
       <div className="vlinks" style={{ marginTop: 8 }}>
         <button type="button" className="btn" onClick={() => setAddIt(true)}>Add to itinerary</button>
         {gid && !it.private && <Link className="btn" to={`/g/${gid}/expense/new?${expenseQs}`}>Add as expense</Link>}
+        {v.personal && <button type="button" className="btn" onClick={() => setAddEx(true)}>Add as expense</button>}
       </div>
 
       <div className="panel vfacts">
@@ -123,6 +126,7 @@ export default function VaultItemPage() {
           {arm.is('del') ? 'Tap again to remove' : 'Remove from the vault'}
         </button>
       )}
+      {addEx && <AddAsExpense query={expenseQs} title={it.title} onClose={() => setAddEx(false)} />}
       {addIt && <AddToItinerary item={it} onClose={() => setAddIt(false)} />}
       {full && <QrView title={it.title} when={when} images={images} onClose={() => setFull(false)} />}
     </div>

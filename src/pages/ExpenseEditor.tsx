@@ -363,11 +363,11 @@ export default function ExpenseEditor() {
             <label className="lbl" htmlFor="vitem">Vault item</label>
             <select id="vitem" value={f.itemId} onChange={e => set('itemId', e.target.value)}>
               <option value="">None</option>
-              {vaultItems.map(i => <option key={i.id} value={i.id}>{i.title}{i.description ? ' · ' + i.description : ''}</option>)}
+              {vaultItems.map(i => <option key={i.id} value={i.id}>{i.title}{i.description ? ' · ' + i.description : ''}{i.personal ? ' (My vault)' : ''}</option>)}
               {f.itemId && !vaultItems.some(i => i.id === f.itemId) && <option value={f.itemId}>(a vault item you cannot see)</option>}
             </select>
             {(() => { const it = vaultItems.find(i => i.id === f.itemId); return it ? (
-              <div className="vitem"><TypeIcon type={it.type} size={34} /><span className="vtx"><b>{it.title}</b>{it.description && <div className="muted small">{it.description}</div>}</span>{vaultId && <Link className="btn small" to={`/vault/${vaultId}/item/${it.id}`}>Open</Link>}</div>
+              <div className="vitem"><TypeIcon type={it.type} size={34} /><span className="vtx"><b>{it.title}</b>{it.description && <div className="muted small">{it.description}</div>}</span>{(it.vault_id ?? vaultId) && <Link className="btn small" to={`/vault/${it.vault_id ?? vaultId}/item/${it.id}`}>Open</Link>}</div>
             ) : null })()}
           </>
         )}
