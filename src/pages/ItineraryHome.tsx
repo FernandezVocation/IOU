@@ -17,7 +17,7 @@ function Row({ iid, it, by, cost }: { iid: string; it: ItineraryItem; by: Arrang
   const dir = directionsUrl(it)
   const shortDate = it.starts_on ? fmtDate(it.starts_on).replace(/^[^,]+, /, '') : ''
   const route = it.from_place && it.to_place ? `${it.from_place} → ${it.to_place}` : ''
-  const sub = [it.description, by === 'type' ? '' : kindLabel(it), by === 'place' ? '' : route || placeOf(it), it.people.length ? it.people.join(', ') : ''].filter(Boolean).join(' · ')
+  const sub = [by === 'type' ? '' : kindLabel(it), by === 'place' ? '' : route || placeOf(it), it.people.length ? it.people.join(', ') : ''].filter(Boolean).join(' · ')
   return (
     <div className="vrow">
       <Link className="vmain" to={`/itinerary/${iid}/item/${it.id}`}>
@@ -27,6 +27,7 @@ function Row({ iid, it, by, cost }: { iid: string; it: ItineraryItem; by: Arrang
           <b>{it.title}{it.vault_item_id && <span className="tkt" title="Has a vault ticket" aria-label="Has a vault ticket">{ticketIcon}</span>}{it.private && <em className="pv">Only me</em>}{cost && <em className="pv amt">{cost}</em>}</b>
           <span>{sub}</span>
         </span>
+        {it.description && <span className="vdesc" title={it.description}>{it.description}</span>}
       </Link>
       {dir && <a className="vgo" href={dir} target="_blank" rel="noopener noreferrer" aria-label={`Directions for ${it.title}`}>{pinIcon}</a>}
     </div>

@@ -79,3 +79,9 @@ export function useItineraryData(id: string, userId: string) {
   useEffect(() => { load() }, [load])
   return { data, error, loading, reload: load }
 }
+
+/** The itineraries linked to a group that the signed-in person is in (the rest are hidden by row-level rules). */
+export async function itinerariesFor(groupId: string): Promise<Array<{ id: string; name: string }>> {
+  const { data } = await supabase.from('itineraries').select('id, name').eq('group_id', groupId).order('created_at')
+  return (data as Array<{ id: string; name: string }> | null) ?? []
+}

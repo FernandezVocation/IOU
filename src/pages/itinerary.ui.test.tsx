@@ -58,6 +58,11 @@ describe('itinerary timeline', () => {
     expect(screen.queryByText('Hotel Roma')).toBeNull()
     expect(screen.getByText('Italo')).toBeTruthy()
   })
+  it('shows the description (a flight or train number) as a highlighted badge', () => {
+    mount(data(items), '/itinerary/it')
+    const badge = screen.getAllByText('Venice to Florence').find(el => el.className.includes('vdesc'))
+    expect(badge).toBeTruthy()
+  })
   it('arranges by type and names a custom category', () => {
     mount(data(items), '/itinerary/it')
     fireEvent.click(screen.getByRole('button', { name: 'Type' }))

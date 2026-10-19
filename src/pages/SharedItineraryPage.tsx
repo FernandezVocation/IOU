@@ -66,7 +66,8 @@ function Inner() {
               <button key={it.id} className="vrow vbtn" onClick={() => setOpen(full)}>
                 <span className="vtime">{it.starts_at ? whenLabel({ starts_on: null, starts_at: it.starts_at, ends_on: null, ends_at: null }) : '–'}</span>
                 <CategoryIcon category={it.category} size={38} />
-                <span className="vtx"><b>{it.title}{full.has_ticket && <span className="tkt" aria-label="Has a ticket"><svg className="i" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M3 8a2 2 0 0 0 0 4v0a2 2 0 0 1 0 4v2h18v-2a2 2 0 0 1 0-4 2 2 0 0 0 0-4V6H3z" /></svg></span>}</b><span>{[it.description, kindLabel(it), route || placeOf(it)].filter(Boolean).join(' · ')}</span></span>
+                <span className="vtx"><b>{it.title}{full.has_ticket && <span className="tkt" aria-label="Has a ticket"><svg className="i" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M3 8a2 2 0 0 0 0 4v0a2 2 0 0 1 0 4v2h18v-2a2 2 0 0 1 0-4 2 2 0 0 0 0-4V6H3z" /></svg></span>}</b><span>{[kindLabel(it), route || placeOf(it)].filter(Boolean).join(' · ')}</span></span>
+                {it.description && <span className="vdesc" title={it.description}>{it.description}</span>}
               </button>
             )
           })}
@@ -79,7 +80,7 @@ function Inner() {
           <div className="sheet" role="dialog" aria-modal="true" aria-label={open.title}>
             <div className="in">
               <header><span /><h2>{open.title}</h2><button className="btn small" onClick={() => setOpen(null)}>Close</button></header>
-              {open.description && <div style={{ fontWeight: 600 }}>{open.description}</div>}
+              {open.description && <span className="vdesc big">{open.description}</span>}
               <div className="sub">{kindLabel(open)}{whenLabel(open) ? ` · ${whenLabel(open)}` : ''}</div>
               {(map || dir || site) && <div className="vlinks">
                 {map && <a className="btn" href={map} target="_blank" rel="noopener noreferrer">Map</a>}

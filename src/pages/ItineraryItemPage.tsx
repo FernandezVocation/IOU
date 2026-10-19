@@ -59,7 +59,7 @@ export default function ItineraryItemPage() {
             <CategoryIcon category={it.category} size={44} />
             <div>
               <h1>{it.title}</h1>
-              {it.description && <div style={{ fontWeight: 600, marginTop: 2 }}>{it.description}</div>}
+              {it.description && <span className="vdesc big">{it.description}</span>}
               <div className="sub">{kindLabel(it)}{it.private ? ' · Only me' : ''}</div>
             </div>
           </div>
