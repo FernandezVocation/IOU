@@ -6,6 +6,7 @@ import { directionsUrl, mapUrl, typeOf, websiteUrl, whenLabel } from '../lib/vau
 import TypeIcon from '../components/TypeIcon'
 import QrView from '../components/QrView'
 import { useArm, useToast } from '../components/ui'
+import AddToItinerary from '../components/AddToItinerary'
 import { useVault } from './VaultShell'
 
 export default function VaultItemPage() {
@@ -17,6 +18,7 @@ export default function VaultItemPage() {
   const [urls, setUrls] = useState<Record<string, string>>({})
   const [full, setFull] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [addIt, setAddIt] = useState(false)
   const it = data.items.find(i => i.id === iid)
   const v = data.vault
   const back = '/vault/' + v.id
@@ -84,7 +86,10 @@ export default function VaultItemPage() {
           {site && <a className="btn" href={site} target="_blank" rel="noopener noreferrer">Website</a>}
         </div>
       )}
-      {gid && !it.private && <Link className="btn block" style={{ marginTop: 8 }} to={`/g/${gid}/expense/new?${expenseQs}`}>Add as expense</Link>}
+      <div className="vlinks" style={{ marginTop: 8 }}>
+        <button type="button" className="btn" onClick={() => setAddIt(true)}>Add to itinerary</button>
+        {gid && !it.private && <Link className="btn" to={`/g/${gid}/expense/new?${expenseQs}`}>Add as expense</Link>}
+      </div>
 
       <div className="panel vfacts">
         {when && <div><span>When</span><b>{when}<small> · local time at the place</small></b></div>}
@@ -118,6 +123,7 @@ export default function VaultItemPage() {
           {arm.is('del') ? 'Tap again to remove' : 'Remove from the vault'}
         </button>
       )}
+      {addIt && <AddToItinerary item={it} onClose={() => setAddIt(false)} />}
       {full && <QrView title={it.title} when={when} images={images} onClose={() => setFull(false)} />}
     </div>
   )

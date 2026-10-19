@@ -1,0 +1,71 @@
+import { describe, expect, it } from 'vitest'
+import { arrange, categoryForVaultType, customNames, directionsUrl, filterItems, kindLabel, mapUrl, NO_FILTERS, peopleIn, type ItineraryItem } from './itinerary'
+
+const I = (o: Partial<ItineraryItem>): ItineraryItem => ({
+  id: o.title ?? 'x', itinerary_id: 'it', category: 'transport', category_label: '', subtype: '', title: 'T', description: '', vendor: '',
+  starts_on: null, starts_at: null, ends_on: null, ends_at: null, place: '', address: '', from_place: '', to_place: '', website: '', notes: '',
+  people: [], private: false, vault_item_id: null, created_by: 'u', ...o,
+})
+
+describe('links', () => {
+  it('draws a route from the From place to the To place for transport', () => {
+    const d = decodeURIComponent(directionsUrl(I({ from_place: 'Venezia Santa Lucia', to_place: 'Firenze SMN' }))!)
+    expect(d).toContain('origin=Venezia Santa Lucia')
+    expect(d).toContain('destination=Firenze SMN')
+  })
+  it('uses the address, then the place, when there is no route', () => {
+    expect(decodeURIComponent(directionsUrl(I({ address: 'Via Roma 1', place: 'Rome' }))!)).toContain('destination=Via Roma 1, Rome')
+    expect(mapUrl(I({}))).toBeNull()
+    expect(decodeURIComponent(mapUrl(I({ to_place: 'Florence' }))!)).toContain('Florence')
+  })
+})
+
+describe('names', () => {
+  it('shows a custom category by its typed name', () => {
+    expect(kindLabel(I({ category: 'custom', category_label: 'Family', subtype: 'Dinner' }))).toBe('Family · Dinner')
+    expect(kindLabel(I({ category: 'work', subtype: 'Call' }))).toBe('Work · Call')
+  })
+  it('remembers custom names and the people used', () => {
+    const items = [I({ category: 'custom', category_label: 'Family' }), I({ category: 'custom', category_label: 'Family' }), I({ category: 'food', people: ['Ann', 'Nonna'] }), I({ people: ['Ann'] })]
+    expect(customNames(items)).toEqual(['Family'])
+    expect(peopleIn(items)).toEqual(['Ann', 'Nonna'])
+  })
+})
+
+describe('arrange and filter', () => {
+  const items = [
+    I({ title: 'Italo', starts_on: '2026-10-10', starts_at: '09:10', to_place: 'Florence', people: ['Ann', 'Ed'] }),
+    I({ title: 'Hotel', category: 'stay', starts_on: '2026-10-10', starts_at: '14:00', place: 'Florence', people: ['Ann'] }),
+    I({ title: 'Gelato', category: 'food', starts_on: '2026-10-11', place: 'Rome' }),
+    I({ title: 'Packing', category: 'custom', category_label: 'Chores' }),
+  ]
+  it('groups by day in time order with an undated section last', () => {
+    const s = arrange(items, 'date')
+    expect(s.map(x => x.label).at(-1)).toBe('No date')
+    expect(s[0].items.map(i => i.title)).toEqual(['Italo', 'Hotel'])
+    expect(s[0].sub).toBe('Florence')
+  })
+  it('groups by place, counting where a trip goes', () => {
+    const s = arrange(items, 'place')
+    expect(s.find(x => x.label === 'Florence')!.items.map(i => i.title)).toEqual(['Italo', 'Hotel'])
+    expect(s.at(-1)!.label).toBe('No place')
+  })
+  it('groups by category and keeps each custom name separate', () => {
+    const s = arrange(items, 'type')
+    expect(s.map(x => x.label)).toEqual(['Transport', 'Stays', 'Food', 'Chores'])
+  })
+  it('filters by category, person and search', () => {
+    expect(filterItems(items, { ...NO_FILTERS, category: 'stay' }).map(i => i.title)).toEqual(['Hotel'])
+    expect(filterItems(items, { ...NO_FILTERS, person: 'ed' }).map(i => i.title)).toEqual(['Italo'])
+    expect(filterItems(items, { ...NO_FILTERS, q: 'rome' }).map(i => i.title)).toEqual(['Gelato'])
+  })
+})
+
+describe('Add to itinerary', () => {
+  it('suggests a category from the vault type', () => {
+    expect(categoryForVaultType('ticket').category).toBe('transport')
+    expect(categoryForVaultType('stay').category).toBe('stay')
+    expect(categoryForVaultType('reservation')).toEqual({ category: 'food', subtype: 'Restaurant' })
+    expect(categoryForVaultType('document').category).toBe('custom')
+  })
+})

@@ -130,6 +130,7 @@ const KIND_LOOK: Record<string, { icon: string; color: string }> = {
   Event: { icon: 'party', color: '#7E41B5' },
   'Night out': { icon: 'glass', color: '#A22530' },
   Work: { icon: 'briefcase', color: '#963C0D' },
+  Itinerary: { icon: 'map', color: '#127084' },
 }
 const FALLBACK_LOOK = { icon: 'folder', color: '#3556CC' }
 

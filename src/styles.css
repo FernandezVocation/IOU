@@ -151,6 +151,9 @@ svg.i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;stro
 
 nav.tabs .in.two{grid-template-columns:repeat(2,1fr)}
 nav.tabs .in.three{grid-template-columns:repeat(3,1fr)}
+nav.tabs .in.four{grid-template-columns:repeat(4,1fr)}
+.tkt{display:inline-flex;vertical-align:-2px;margin-left:6px;color:var(--accent)}
+.tkt .i{stroke:currentColor;fill:none;stroke-width:2}
 nav.tabs .in.six{grid-template-columns:repeat(6,1fr)}
 nav.tabs .in.six a{font-size:11px}
 .rbox{margin-top:2px}

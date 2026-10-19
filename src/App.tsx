@@ -25,6 +25,14 @@ import VaultHome from './pages/VaultHome'
 import VaultItemPage from './pages/VaultItemPage'
 import VaultItemEditor from './pages/VaultItemEditor'
 import SharedVaultPage from './pages/SharedVaultPage'
+import ItinerariesPage from './pages/ItinerariesPage'
+import NewItineraryPage from './pages/NewItineraryPage'
+import ItineraryJoinPage from './pages/ItineraryJoinPage'
+import { ItineraryProvider } from './pages/ItineraryShell'
+import ItineraryHome from './pages/ItineraryHome'
+import ItineraryItemPage from './pages/ItineraryItemPage'
+import ItineraryItemEditor from './pages/ItineraryItemEditor'
+import SharedItineraryPage from './pages/SharedItineraryPage'
 
 /** Old links to the Trip tab now land on group settings. */
 function ToSettings() { const { id = '' } = useParams(); return <Navigate to={`/g/${id}/settings`} replace /> }
@@ -56,6 +64,7 @@ export default function App() {
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/b/:token" element={<SharedPage />} />
         <Route path="/v/:token" element={<SharedVaultPage />} />
+        <Route path="/i/:token" element={<SharedItineraryPage />} />
         <Route element={<RequireAuth />}>
           <Route path="/" element={<GroupsPage />} />
           <Route path="/overview" element={<OverviewPage />} />
@@ -68,6 +77,15 @@ export default function App() {
             <Route path="item/new" element={<VaultItemEditor />} />
             <Route path="item/:iid" element={<VaultItemPage />} />
             <Route path="item/:iid/edit" element={<VaultItemEditor />} />
+          </Route>
+          <Route path="/itineraries" element={<ItinerariesPage />} />
+          <Route path="/itineraries/new" element={<NewItineraryPage />} />
+          <Route path="/ij/:code" element={<ItineraryJoinPage />} />
+          <Route path="/itinerary/:id" element={<ItineraryProvider />}>
+            <Route index element={<ItineraryHome />} />
+            <Route path="item/new" element={<ItineraryItemEditor />} />
+            <Route path="item/:iid" element={<ItineraryItemPage />} />
+            <Route path="item/:iid/edit" element={<ItineraryItemEditor />} />
           </Route>
           <Route path="/join/:code" element={<JoinPage />} />
           <Route path="/g/:id" element={<GroupProvider />}>
