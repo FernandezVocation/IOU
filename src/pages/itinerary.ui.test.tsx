@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 
 const { calls } = vi.hoisted(() => ({ calls: [] as string[] }))
@@ -92,6 +92,21 @@ describe('item page', () => {
     mount(data([item({ created_by: 'u1' })]), '/itinerary/it/item/i1')
     expect(screen.getByRole('link', { name: 'Edit' })).toBeTruthy()
     expect(screen.getByRole('button', { name: /Remove from the itinerary/ })).toBeTruthy()
+  })
+})
+
+describe('export sheet', () => {
+  it('lets you pick what to export by dates, places or types', () => {
+    mount(data([item({}), item({ id: 'i2', title: 'Gelato', category: 'food', subtype: '', from_place: '', to_place: '', place: 'Rome', starts_on: '2026-10-11' })]), '/itinerary/it')
+    fireEvent.click(screen.getByRole('button', { name: 'Export the plan' }))
+    const which = within(screen.getByRole('group', { name: 'Which items' }))
+    fireEvent.click(which.getByRole('button', { name: 'Places' }))
+    expect(screen.getByLabelText(/Rome/)).toBeTruthy()
+    expect((screen.getByLabelText(/Rome/) as HTMLInputElement).checked).toBe(true)
+    fireEvent.click(which.getByRole('button', { name: 'Types' }))
+    expect(screen.getByLabelText(/Food/)).toBeTruthy()
+    fireEvent.click(which.getByRole('button', { name: 'All' }))
+    expect(screen.queryByLabelText(/Food/)).toBeNull()
   })
 })
 

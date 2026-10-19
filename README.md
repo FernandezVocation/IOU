@@ -154,7 +154,7 @@ The anon key in the browser is public by design. **Never put the `service_role` 
 ## Tests
 
 ```bash
-npm test        # ledger math, payments, overview, invoices, receipts ZIP, exports, balance links, and the screens, categories, breakdown and themes (274 tests)
+npm test        # ledger math, payments, overview, invoices, receipts ZIP, exports, balance links, and the screens, categories, breakdown and themes (278 tests)
 ```
 
 Database rules are tested against a real Postgres: `rls_test.sql` (52 checks: cross-group reads/writes, invite flow, owner rules, currency lock, storage access) and `payments_test.sql` (70 checks: who may confirm, edit, undo and delete a payment, partial amounts, cross-trip batches that succeed or fail as a whole, private contacts, unforgeable authors) `roles_test.sql` (54 checks: members change only their own expenses, co-admins change anything but cannot remove the owner or delete the group, who may change levels, group links versus person links, other people's amounts are not sent on a person link, receipt access follows the link) and `share_links_test.sql` (49 checks: an anonymous visitor cannot read any table or call any other function, tokens cannot be guessed or crossed between trips, nothing private is returned, expiry and turn-off work). Run the second on a fresh database (rebuild it first), then `SHARED_SHAPE_JSON=/tmp/shared_shape.json npx vitest run src/lib/shared.test.ts` checks that the real database output feeds the app's math. Needs a local Postgres with the Supabase roles stubbed:

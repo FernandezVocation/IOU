@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildExportModel, buildItineraryDocx, buildItineraryPdf, docxDocumentXml, exportFileName } from './itineraryExport'
+import { exportChoices, buildExportModel, buildItineraryDocx, buildItineraryPdf, docxDocumentXml, exportFileName } from './itineraryExport'
 import type { ItineraryItem } from './itinerary'
 import { spendByItem } from './itinerarySpend'
 
@@ -30,6 +30,32 @@ describe('export model', () => {
     expect(text).not.toContain('Surprise')
   })
   it('makes a safe file name', () => { expect(exportFileName('Italy 2026: Rome/Venice?', 'pdf')).toBe('Italy-2026-RomeVenice.pdf'); expect(exportFileName('???', 'docx')).toBe('itinerary.docx') })
+})
+
+describe('choosing what to export', () => {
+  const many = [
+    I({ id: 'a', title: 'Italo', starts_on: '2026-10-10', to_place: 'Florence' }),
+    I({ id: 'b', title: 'Hotel', category: 'stay', subtype: 'Hotel', starts_on: '2026-10-10', place: 'Florence', from_place: '', to_place: '' }),
+    I({ id: 'c', title: 'Gelato', category: 'food', subtype: '', starts_on: '2026-10-11', place: 'Rome', from_place: '', to_place: '' }),
+    I({ id: 'd', title: 'Secret', private: true, starts_on: '2026-10-11', place: 'Rome' }),
+  ]
+  const titles = (m: ReturnType<typeof buildExportModel>) => m.days.flatMap(d => d.entries.map(e => e.title))
+  it('lists the days, places or types to pick from, never counting Only me items', () => {
+    expect(exportChoices(many, 'date').map(c => [c.label, c.count])).toEqual([['Sat, Oct 10', 2], ['Sun, Oct 11', 1]])
+    expect(exportChoices(many, 'place').map(c => c.label)).toEqual(['Florence', 'Rome'])
+    expect(exportChoices(many, 'type').map(c => c.label)).toEqual(['Transport', 'Stays', 'Food'])
+  })
+  it('exports only the chosen days, places or types, or everything', () => {
+    const day = exportChoices(many, 'date')[1].key
+    expect(titles(buildExportModel('T', many, { notes: false, amounts: false, only: { by: 'date', keys: [day] } }, null))).toEqual(['Gelato'])
+    expect(titles(buildExportModel('T', many, { notes: false, amounts: false, only: { by: 'place', keys: ['florence'] } }, null)).sort()).toEqual(['Hotel', 'Italo'])
+    expect(titles(buildExportModel('T', many, { notes: false, amounts: false, only: { by: 'type', keys: ['stay'] } }, null))).toEqual(['Hotel'])
+    expect(titles(buildExportModel('T', many, { notes: false, amounts: false }, null)).length).toBe(3)
+  })
+  it('lays the plan out by place or by type when asked', () => {
+    expect(buildExportModel('T', many, { notes: false, amounts: false, by: 'place' }, null).days.map(d => d.heading)).toEqual(['Florence', 'Rome'])
+    expect(buildExportModel('T', many, { notes: false, amounts: false, by: 'type' }, null).days.map(d => d.heading)).toEqual(['Transport', 'Stays', 'Food'])
+  })
 })
 
 describe('files', () => {

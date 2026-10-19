@@ -1,8 +1,15 @@
-import { arrange, kindLabel, whenLabel, type ItineraryItem } from './itinerary'
+import { arrange, kindLabel, whenLabel, type Arrange, type ItineraryItem } from './itinerary'
 import { spendLabel, type Spend } from './itinerarySpend'
 import { fmtTime, l1 } from './format'
 
-export interface ExportOptions { notes: boolean; amounts: boolean }
+export interface ExportOptions {
+  notes: boolean; amounts: boolean
+  /** How the plan is laid out: by day (default), by place or by type. */
+  by?: Arrange
+  /** Only these items: the sections (days, places or types) whose keys are listed. Null or missing means everything. */
+  only?: { by: Arrange; keys: string[] } | null
+}
+export const exportChoices = (items: ItineraryItem[], by: Arrange) => arrange(items.filter(i => !i.private), by).map(s => ({ key: s.key, label: s.label, count: s.items.length }))
 export interface ExportEntry { time: string; title: string; lines: string[] }
 export interface ExportDay { heading: string; sub: string; entries: ExportEntry[] }
 export interface ExportModel { title: string; subtitle: string; days: ExportDay[] }
@@ -12,8 +19,10 @@ export interface ExportModel { title: string; subtitle: string; days: ExportDay[
  * the same rule as read-only links. Vault tickets and files are never part of it.
  */
 export function buildExportModel(name: string, items: ItineraryItem[], opts: ExportOptions, spend: Spend | null, now = new Date()): ExportModel {
-  const shown = items.filter(i => !i.private)
-  const days: ExportDay[] = arrange(shown, 'date').map(s => ({
+  const everything = items.filter(i => !i.private)
+  const picked = opts.only ? new Set(arrange(everything, opts.only.by).filter(s => opts.only!.keys.includes(s.key)).flatMap(s => s.items.map(i => i.id))) : null
+  const shown = picked ? everything.filter(i => picked.has(i.id)) : everything
+  const days: ExportDay[] = arrange(shown, opts.by ?? 'date').map(s => ({
     heading: s.label,
     sub: s.sub ?? '',
     entries: s.items.map(i => {
