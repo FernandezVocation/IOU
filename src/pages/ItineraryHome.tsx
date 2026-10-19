@@ -8,6 +8,7 @@ import { fmtDate, fmtTime } from '../lib/format'
 import { useItinerary } from './ItineraryShell'
 import ItinerarySettings from '../components/ItinerarySettings'
 import ItineraryShare from '../components/ItineraryShare'
+import ItineraryExport from '../components/ItineraryExport'
 
 const pinIcon = <svg className="i" viewBox="0 0 24 24" width="18" height="18"><path d="M12 21s7-6.2 7-11a7 7 0 0 0-14 0c0 4.8 7 11 7 11z" /><circle cx="12" cy="10" r="2.5" /></svg>
 const ticketIcon = <svg className="i" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M3 8a2 2 0 0 0 0 4v0a2 2 0 0 1 0 4v2h18v-2a2 2 0 0 1 0-4 2 2 0 0 0 0-4V6H3z" /></svg>
@@ -37,7 +38,7 @@ export default function ItineraryHome() {
   const [by, setBy] = useState<Arrange>('date')
   const [f, setF] = useState<Filters>(NO_FILTERS)
   const [amounts, setAmounts] = useState(() => { try { return localStorage.getItem('iou.itinAmounts') === '1' } catch { return false } })
-  const [sheet, setSheet] = useState<null | 'settings' | 'share'>(null)
+  const [sheet, setSheet] = useState<null | 'settings' | 'share' | 'export'>(null)
   const it = data.itinerary
 
   const present = useMemo(() => CATEGORIES.filter(c => data.items.some(i => i.category === c.id)), [data.items])
@@ -65,6 +66,7 @@ export default function ItineraryHome() {
             </div>
           </div>
           <div className="vtools">
+            <button className="btn small" onClick={() => setSheet('export')} aria-label="Export the plan">Export</button>
             {data.isAdmin && <button className="btn small" onClick={() => setSheet('share')} aria-label="Read-only links">Share</button>}
             <button className="btn small" onClick={() => setSheet('settings')} aria-label="Itinerary settings">People</button>
           </div>
@@ -102,6 +104,7 @@ export default function ItineraryHome() {
       </div>
       <Link className="fab" to={`/itinerary/${it.id}/item/new`} aria-label="Add to the itinerary"><svg className="i" viewBox="0 0 24 24" style={{ stroke: 'currentColor', width: 26, height: 26 }}><path d="M12 5v14M5 12h14" /></svg></Link>
       {sheet === 'settings' && <ItinerarySettings onClose={() => setSheet(null)} />}
+      {sheet === 'export' && <ItineraryExport onClose={() => setSheet(null)} />}
       {sheet === 'share' && <ItineraryShare onClose={() => setSheet(null)} />}
     </>
   )
