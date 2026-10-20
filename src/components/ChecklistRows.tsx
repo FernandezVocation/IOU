@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import ChecklistTypeIcon from './ChecklistTypeIcon'
 import {
   NO_FILTERS, STATUSES, TYPES, dueText, groupItems, isFiltered, isOverdue, statusLabel, typeLabel, whoName,
   type ChecklistItem, type Ctx, type Filters, type GroupBy, type Person,
@@ -26,7 +27,7 @@ export function ChecklistRows({ items, people, ctx, groupBy, listNames, onTick, 
                   {i.status === 'completed' ? '✓' : i.status === 'in_progress' ? '◐' : ''}
                 </button>
                 <button className="ck-main" onClick={() => onOpen(i)} aria-label={`Open ${i.title}`}>
-                  <span className="ck-title">{i.title}{i.qty > 1 && <span className="muted"> ×{i.qty}</span>}</span>
+                  <span className="ck-title"><ChecklistTypeIcon type={i.type} />{i.title}{i.qty > 1 && <span className="muted"> ×{i.qty}</span>}</span>
                   <span className="ck-meta">
                     <span className="ck-chip">{typeLabel(i)}</span>
                     {i.status === 'in_progress' && <span className="ck-chip prog">In progress</span>}
@@ -66,8 +67,8 @@ export function ChecklistFilters({ filters, onChange, groupBy, onGroupBy, people
           <span className="lbl" style={{ marginTop: 0 }}>Type</span>
           <div className="chips" role="group" aria-label="Filter by type">
             <button className="chip" aria-pressed={filters.type === 'all'} onClick={() => set({ type: 'all' })}>All</button>
-            {TYPES.filter(t => t.id !== 'custom').map(t => <button key={t.id} className="chip" aria-pressed={filters.type === t.id} onClick={() => set({ type: t.id })}>{t.label}</button>)}
-            {customLabels.map(l => <button key={l} className="chip" aria-pressed={filters.type === 'c:' + l} onClick={() => set({ type: 'c:' + l })}>{l}</button>)}
+            {TYPES.filter(t => t.id !== 'custom').map(t => <button key={t.id} className="chip" aria-pressed={filters.type === t.id} onClick={() => set({ type: t.id })}><ChecklistTypeIcon type={t.id} size={16} /> {t.label}</button>)}
+            {customLabels.map(l => <button key={l} className="chip" aria-pressed={filters.type === 'c:' + l} onClick={() => set({ type: 'c:' + l })}><ChecklistTypeIcon type="custom" size={16} /> {l}</button>)}
           </div>
           <span className="lbl">Status</span>
           <div className="chips" role="group" aria-label="Filter by status">
@@ -77,7 +78,7 @@ export function ChecklistFilters({ filters, onChange, groupBy, onGroupBy, people
           <label className="lbl" htmlFor="ckf-as">Assigned to</label>
           <select id="ckf-as" value={filters.assignee} onChange={e => set({ assignee: e.target.value })}>
             <option value="all">Anyone</option><option value="me">Me</option><option value="none">Unassigned</option>
-            {people.map(p => <option key={p.key} value={p.key}>{p.name}</option>)}
+            {people.filter(p => p.user !== me).map(p => <option key={p.key} value={p.key}>{p.name}</option>)}
           </select>
           <label className="lbl" htmlFor="ckf-db">Completed by</label>
           <select id="ckf-db" value={filters.doneBy} onChange={e => set({ doneBy: e.target.value })}>

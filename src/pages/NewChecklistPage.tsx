@@ -5,6 +5,7 @@ import { friendly } from '../lib/format'
 import { TYPES, type ItemType } from '../lib/checklist'
 import { useAuth } from '../lib/auth'
 import { myGroups } from '../lib/myGroups'
+import ChecklistTypeIcon from '../components/ChecklistTypeIcon'
 import GroupLookPicker from '../components/GroupLookPicker'
 
 interface G { id: string; name: string }
@@ -52,7 +53,7 @@ export default function NewChecklistPage() {
         <GroupLookPicker kind="Checklist" icon={look?.icon} color={look?.color} onChange={setLook} />
         <span className="lbl">New items start as</span>
         <div className="chips" role="group" aria-label="Starting type">
-          {TYPES.filter(t => t.id !== 'custom').map(t => <button type="button" key={t.id} className="chip" aria-pressed={type === t.id} onClick={() => setType(t.id)}>{t.label}</button>)}
+          {TYPES.filter(t => t.id !== 'custom').map(t => <button type="button" key={t.id} className="chip" aria-pressed={type === t.id} onClick={() => setType(t.id)}><ChecklistTypeIcon type={t.id} size={16} /> {t.label}</button>)}
         </div>
         <div className="muted small" style={{ marginTop: 6 }}>Just the starting choice. One list can mix to-dos, purchases, packing and more.</div>
         {groups.length > 0 && (

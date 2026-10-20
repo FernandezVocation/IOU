@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import ChecklistTypeIcon from './ChecklistTypeIcon'
 import { Sheet, ConfirmDialog, useToast } from './ui'
 import { supabase } from '../lib/supabase'
 import { friendly } from '../lib/format'
@@ -125,7 +126,7 @@ export default function ChecklistItemSheet({ data, item, allItems, onClose, onSa
         <fieldset disabled={!editable} style={{ border: 0, padding: 0, margin: 0 }}>
           <span className="lbl" style={{ marginTop: 0 }}>Type</span>
           <div className="chips" role="group" aria-label="Item type">
-            {TYPES.map(t => <button type="button" key={t.id} className="chip" aria-pressed={type === t.id} onClick={() => setType(t.id)}>{t.label}</button>)}
+            {TYPES.map(t => <button type="button" key={t.id} className="chip" aria-pressed={type === t.id} onClick={() => setType(t.id)}><ChecklistTypeIcon type={t.id} size={16} /> {t.label}</button>)}
           </div>
           {type === 'custom' && (
             <>
@@ -158,7 +159,7 @@ export default function ChecklistItemSheet({ data, item, allItems, onClose, onSa
         <label className="lbl" htmlFor="ck-as">Assigned to</label>
         <select id="ck-as" value={assignee} onChange={e => setAssignee(e.target.value)}>
           <option value="">Unassigned</option>
-          {people.map(p => <option key={p.key} value={p.key}>{p.name}{p.user ? '' : ' (no account)'}</option>)}
+          {people.map(p => <option key={p.key} value={p.key}>{p.name}{p.user === userId ? ' (me)' : p.user ? '' : ' (no account)'}</option>)}
         </select>
         {status === 'completed' && (
           <>

@@ -323,3 +323,6 @@ details.pair.me summary{font-weight:700}
 .ck-chip.prog{background:#fdeedd;color:#963C0D}
 .ck-chip.ok{background:#e3f4ea;color:#176A38}
 .ck-chip.list{background:transparent;border:1px solid var(--line)}
+.ck-ico{vertical-align:-3px;margin-right:6px;flex:none}
+.chip .ck-ico{margin-right:2px}
+.chip[aria-pressed=true] .ck-ico{stroke:currentColor}
