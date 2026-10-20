@@ -112,6 +112,8 @@ export default function ItineraryItemEditor() {
     const fromExpense = !existing ? sp.get('expense') : null
     let linkProblem = false
     if (fromExpense && id) { const l = await supabase.rpc('link_expense_itinerary_item', { p_expense: fromExpense, p_item: id }); linkProblem = !!l.error }
+    const fromList = !existing ? sp.get('checklist') : null
+    if (fromList && id) { const l = await supabase.from('checklist_items').update({ itinerary_item_id: id }).eq('id', fromList); if (l.error) linkProblem = true }
     await reload()
     setBusy(false)
     toast(linkProblem ? 'Added, but the expense could not be linked. Open the expense to try again.' : existing ? 'Updated.' : fromExpense ? 'Added and linked to the expense.' : 'Added to the itinerary.')

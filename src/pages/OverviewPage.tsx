@@ -79,7 +79,7 @@ export default function OverviewPage() {
   return (
     <>
       <div className="app">
-        <div className="top"><div><h1>Overview</h1><div className="sub">Balances across your groups</div></div><button className="btn small" onClick={load}>Refresh</button></div>
+        <div className="top"><div><Link className="backlink" to="/">← Your groups</Link><h1>Overview</h1><div className="sub">Balances across your groups</div></div><button className="btn small" onClick={load}>Refresh</button></div>
         {error && <div className="notice err" role="alert">{error}</div>}
         {!all && !error && <Spinner />}
         {all && !trips.length && <div className="empty"><b>No groups yet</b>Once you’re in a group, balances with the people you share costs with show up here.</div>}

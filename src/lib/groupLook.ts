@@ -109,6 +109,7 @@ export const ICONS: Array<{ id: string; label: string; svg: string }> = [
   { id: 'gem', label: 'Jewellery', svg: '<path d="M6 3h12l4 6-10 12L2 9z"/><path d="M2 9h20M9 3l-2 6 5 12 5-12-2-6"/>' },
   { id: 'sparkles', label: 'Sparkle', svg: '<path d="M10 3l1.800 5.2L17 10l-5.2 1.800L10 17l-1.800-5.2L3 10l5.2-1.800z"/><path d="M18 14l.8 2.2L21 17l-2.2.8L18 20l-.8-2.2L15 17l2.2-.8z"/>' },
   { id: 'smile', label: 'Fun', svg: '<circle cx="12" cy="12" r="9"/><path d="M8 14c1 2 2.5 3 4 3s3-1 4-3"/><circle cx="9" cy="9.5" r=".7"/><circle cx="15" cy="9.5" r=".7"/>' },
+  { id: 'check', label: 'Checklist', svg: '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12l3 3 5-6"/>' },
   { id: 'folder', label: 'Other', svg: '<path d="M3 6a1 1 0 0 1 1-1h5l2 2h8a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/>' },
 ]
 
@@ -131,6 +132,7 @@ const KIND_LOOK: Record<string, { icon: string; color: string }> = {
   'Night out': { icon: 'glass', color: '#A22530' },
   Work: { icon: 'briefcase', color: '#963C0D' },
   Itinerary: { icon: 'map', color: '#127084' },
+  Checklist: { icon: 'check', color: '#1E7A42' },
 }
 const FALLBACK_LOOK = { icon: 'folder', color: '#3556CC' }
 

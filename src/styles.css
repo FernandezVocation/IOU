@@ -299,3 +299,27 @@ details.pair.me summary{font-weight:700}
 .frow .inp{flex:1;min-width:0;margin:0}
 .fpanel{margin-top:8px}
 .vsub{font:600 13px/1.2 var(--body,inherit);color:var(--muted);margin:10px 2px 6px;text-transform:uppercase;letter-spacing:.04em}
+
+/* Checklists */
+.ck-title-row{display:flex;align-items:center;gap:12px}
+.ck-title-row>div{flex:1}
+.ck-title-row h1{margin:0}
+.ck-quick{margin:12px 0}
+.ck-quick input{flex:1;min-width:0}
+.ck-filters{margin:4px 0 10px}
+.ck-panel{margin-top:8px}
+.ck-head{font-size:13px;font-weight:600;margin:16px 0 6px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.ck-row{display:flex;align-items:flex-start;gap:12px;padding:10px 4px;border-bottom:1px solid var(--line)}
+.ck-row.done .ck-title{text-decoration:line-through;opacity:.6}
+.ck-tick{flex:none;width:28px;height:28px;border-radius:50%;border:2px solid var(--muted);background:transparent;color:#fff;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer}
+.ck-tick.in_progress{border-color:#C25416;color:#C25416}
+.ck-tick.completed{background:#1E7A42;border-color:#1E7A42}
+.ck-main{flex:1;min-width:0;text-align:left;background:none;border:0;padding:0;color:inherit;font:inherit;cursor:pointer;display:flex;flex-direction:column;gap:4px}
+.ck-main.static{cursor:default}
+.ck-title{font-weight:500;overflow-wrap:anywhere}
+.ck-meta{display:flex;flex-wrap:wrap;gap:6px}
+.ck-chip{font-size:12px;padding:2px 8px;border-radius:999px;background:var(--surface-2,var(--line));color:inherit}
+.ck-chip.late{background:#fde8e8;color:#a22530}
+.ck-chip.prog{background:#fdeedd;color:#963C0D}
+.ck-chip.ok{background:#e3f4ea;color:#176A38}
+.ck-chip.list{background:transparent;border:1px solid var(--line)}

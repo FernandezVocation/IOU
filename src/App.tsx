@@ -36,6 +36,11 @@ import SharedItineraryPage from './pages/SharedItineraryPage'
 import DiaryPage from './pages/DiaryPage'
 import DiaryEntryPage from './pages/DiaryEntryPage'
 import DiaryEditor from './pages/DiaryEditor'
+import ChecklistsPage from './pages/ChecklistsPage'
+import NewChecklistPage from './pages/NewChecklistPage'
+import ChecklistJoinPage from './pages/ChecklistJoinPage'
+import ChecklistPage from './pages/ChecklistPage'
+import SharedChecklistPage from './pages/SharedChecklistPage'
 
 /** Old links to the Trip tab now land on group settings. */
 function ToSettings() { const { id = '' } = useParams(); return <Navigate to={`/g/${id}/settings`} replace /> }
@@ -68,6 +73,7 @@ export default function App() {
         <Route path="/b/:token" element={<SharedPage />} />
         <Route path="/v/:token" element={<SharedVaultPage />} />
         <Route path="/i/:token" element={<SharedItineraryPage />} />
+        <Route path="/c/:token" element={<SharedChecklistPage />} />
         <Route element={<RequireAuth />}>
           <Route path="/" element={<GroupsPage />} />
           <Route path="/overview" element={<OverviewPage />} />
@@ -90,6 +96,10 @@ export default function App() {
             <Route path="item/:iid" element={<ItineraryItemPage />} />
             <Route path="item/:iid/edit" element={<ItineraryItemEditor />} />
           </Route>
+          <Route path="/checklists" element={<ChecklistsPage />} />
+          <Route path="/checklists/new" element={<NewChecklistPage />} />
+          <Route path="/cj/:code" element={<ChecklistJoinPage />} />
+          <Route path="/checklist/:id" element={<ChecklistPage />} />
           <Route path="/diary" element={<DiaryPage />} />
           <Route path="/diary/new" element={<DiaryEditor />} />
           <Route path="/diary/:id" element={<DiaryEntryPage />} />

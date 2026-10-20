@@ -91,7 +91,7 @@ export default function ExpenseEditor() {
     setForm({
       date: existing?.spent_on ?? (/^\d{4}-\d{2}-\d{2}$/.test(qs.get('date') ?? '') ? qs.get('date')! : todayStr()), time: existing ? (existing.spent_at ?? '').slice(0, 5) : (/^\d{2}:\d{2}$/.test(qs.get('time') ?? '') ? qs.get('time')! : nowTime()),
       vendor: existing?.vendor ?? (qs.get('vendor') ?? '').slice(0, 120), description: existing?.description ?? (qs.get('description') ?? '').slice(0, 200), location: existing?.location ?? '', category: existing?.category ?? '', subcategory: existing?.subcategory ?? '', notes: existing?.notes ?? '', ref: existing?.booking_ref ?? (qs.get('ref') ?? '').slice(0, 60),
-      amount: existing ? String(existing.amount) : '', foreign, pick: inList ? startCur : '__other', otherCur: inList ? '' : startCur,
+      amount: existing ? String(existing.amount) : (/^\d+(\.\d{1,2})?$/.test(qs.get('amount') ?? '') ? qs.get('amount')! : ''), foreign, pick: inList ? startCur : '__other', otherCur: inList ? '' : startCur,
       settled: existing?.settled_amount != null ? String(existing.settled_amount) : '',
       charged: existing?.charged_amount != null ? String(existing.charged_amount) : '',
       payerId: existing?.payer_id ?? data.me?.id ?? data.travelers[0]?.id ?? '',
@@ -209,6 +209,15 @@ export default function ExpenseEditor() {
       }).select('id').single()
       if (ins.error || !ins.data) planProblem = true
       else { const l = await supabase.rpc('link_expense_itinerary_item', { p_expense: id, p_item: (ins.data as { id: string }).id }); planProblem = !!l.error }
+    }
+
+    // "Mark purchased" from a checklist: link the checklist item and tick it off. The expense is already saved.
+    const fromList = !existing ? qs.get('checklist') : null
+    if (fromList) {
+      const cur0 = await supabase.from('checklist_items').select('assigned_name, assigned_user').eq('id', fromList).maybeSingle()
+      const a = (cur0.data ?? { assigned_name: '', assigned_user: null }) as { assigned_name: string; assigned_user: string | null }
+      await supabase.from('checklist_items').update({ expense_id: id }).eq('id', fromList)
+      await supabase.rpc('set_checklist_item_progress', { p_item: fromList, p_status: 'completed', p_assigned_name: a.assigned_name, p_assigned_user: a.assigned_user, p_completed_by_name: '', p_completed_by_user: user?.id ?? null })
     }
 
     // Receipts are secondary to the expense: the expense is already saved, so report failures without losing it.

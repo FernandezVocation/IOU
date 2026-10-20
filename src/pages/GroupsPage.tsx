@@ -65,6 +65,7 @@ export default function GroupsPage() {
         ))}
       </div>
       <Link className="btn primary block" to="/new" style={{ marginTop: 14 }}>Create a group</Link>
+      <Link className="btn block" to="/overview" style={{ marginTop: 10 }}>Overview: who owes what across all groups</Link>
       <div className="sect">
         <h2>Join a group</h2>
         <form onSubmit={join} className="prow">
