@@ -36,8 +36,8 @@ export default function ReportsTab() {
     setBusy(kind)
     try {
       const result = computeLedger({ currency: cur, travelers: data.travelers, expenses: data.expenses, payments: data.payments, rates: data.rates, includeEstimates: mode === 'pending' })
-      const blob = kind === 'xlsx' ? await buildXlsx({ data, result, mode }) : await buildPdf({ data, result, mode })
-      downloadBlob(blob, exportName(data, mode, kind))
+      const blob = kind === 'xlsx' ? await buildXlsx({ data, result, mode, settle }) : await buildPdf({ data, result, mode, settle })
+      downloadBlob(blob, exportName(data, mode, kind, settle))
     } catch (e) { toast(friendly(e)) } finally { setBusy(null) }
   }
 
@@ -95,7 +95,7 @@ export default function ReportsTab() {
 
       <div className="panel">
         <h2>Full group report</h2>
-        <div className="muted small">Every transaction with its details and split, each person’s balance, the payment plan, and why each amount is owed. Excel also lists each receipt file next to its transaction.</div>
+        <div className="muted small">Every transaction with its details and split, each person’s balance, the payment plan (the method chosen above), and why each amount is owed. Excel also lists each receipt file next to its transaction.</div>
         <div className="row2" style={{ marginTop: 12 }}>
           <button className="btn primary" disabled={busy !== null} onClick={() => fullReport('xlsx')}>{busy === 'xlsx' ? 'Building…' : 'Excel'}</button>
           <button className="btn primary" disabled={busy !== null} onClick={() => fullReport('pdf')}>{busy === 'pdf' ? 'Building…' : 'PDF'}</button>

@@ -8,7 +8,8 @@ import { catLabel } from './categories'
 import { groupLook, hexArgb, hexToRgb, tilePng } from './groupLook'
 
 export type ExportMode = 'pending' | 'final'
-interface Ctx { data: GroupData; result: LedgerResult; mode: ExportMode }
+/** `settle` chooses the one payment plan the report prints; Itemized when not given. */
+interface Ctx { data: GroupData; result: LedgerResult; mode: ExportMode; settle?: 'itemized' | 'fewest' }
 
 const nameOf = (d: GroupData) => (id: string) => d.travelers.find(t => t.id === id)?.name ?? 'Unknown'
 
@@ -65,14 +66,13 @@ export async function buildXlsx(ctx: Ctx): Promise<Blob> {
   s1.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: hexArgb(look.color) } }
   s1.getCell('A1').font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } }
 
-  const who: unknown[][] = [['PAYMENT PLAN: who pays whom'], [], ['Itemized (each pair settles directly)'], ['From', 'To', `Amount (${cur})`]]
-  R.pairs.forEach(p => who.push([nm(p.debtor), nm(p.creditor), M(p.net)]))
-  if (!R.pairs.length) who.push(['All square'])
-  who.push([], ['Fewest payments (the shortest way to square everyone up)'], ['From', 'To', `Amount (${cur})`])
-  R.transfers.forEach(t => who.push([nm(t.from), nm(t.to), M(t.amount)]))
+  const fewest = ctx.settle === 'fewest'
+  const who: unknown[][] = [['PAYMENT PLAN: who pays whom'], [], [fewest ? 'Fewest payments (the shortest way to square everyone up)' : 'Itemized (each pair settles directly)'], ['From', 'To', `Amount (${cur})`]]
+  if (fewest) { R.transfers.forEach(t => who.push([nm(t.from), nm(t.to), M(t.amount)])); if (!R.transfers.length) who.push(['All square']) }
+  else { R.pairs.forEach(p => who.push([nm(p.debtor), nm(p.creditor), M(p.net)])); if (!R.pairs.length) who.push(['All square']) }
   sheet('Payment plan', who, [24, 24, 18], [3])
 
-  const why: unknown[][] = [['Why: the line items behind each amount'], []]
+  const why: unknown[][] = [[fewest ? 'Detail: the itemized amounts between each pair of people (the fewest-payments plan combines these)' : 'Why: the line items behind each amount'], []]
   R.pairs.forEach(p => {
     why.push([`${nm(p.debtor)} owes ${nm(p.creditor)}`, '', M(p.net)])
     why.push(['Date', 'Item', `Amount (${cur})`])
@@ -146,12 +146,12 @@ export async function buildPdf(ctx: Ctx): Promise<Blob> {
   tbl(['Person', 'Paid', 'Share', 'Pmts sent', 'Pmts received', 'Balance'],
     data.travelers.map(t => [t.name, A(R.paid[t.id]), A(R.share[t.id]), A(R.sent[t.id]), A(R.received[t.id]), (R.balance[t.id] >= 0 ? '+' : '-') + A(Math.abs(R.balance[t.id]))]),
     { columnStyles: { 5: { fontStyle: 'bold' } } })
-  H('Payment plan: who pays whom (itemized)')
-  tbl(['From', 'To', 'Amount'], R.pairs.length ? R.pairs.map(p => [nm(p.debtor), nm(p.creditor), A(p.net)]) : [['All square', '', '']])
-  H('Payment plan: fewest payments')
-  tbl(['From', 'To', 'Amount'], R.transfers.length ? R.transfers.map(t => [nm(t.from), nm(t.to), A(t.amount)]) : [['All square', '', '']])
+  const fewest = ctx.settle === 'fewest'
+  H(fewest ? 'Payment plan: fewest payments' : 'Payment plan: who pays whom (itemized)')
+  if (fewest) tbl(['From', 'To', 'Amount'], R.transfers.length ? R.transfers.map(t => [nm(t.from), nm(t.to), A(t.amount)]) : [['All square', '', '']])
+  else tbl(['From', 'To', 'Amount'], R.pairs.length ? R.pairs.map(p => [nm(p.debtor), nm(p.creditor), A(p.net)]) : [['All square', '', '']])
   if (R.pairs.length) {
-    H('Why: the items behind each amount')
+    H(fewest ? 'Detail: the itemized amounts between each pair (the fewest-payments plan combines these)' : 'Why: the items behind each amount')
     R.pairs.forEach(p => {
       need(22); doc.setFont('helvetica', 'bold'); doc.setFontSize(10)
       doc.text(l1(`${nm(p.debtor)} owes ${nm(p.creditor)}: ${A(p.net)}`), mg, y); y += 2.5
@@ -179,4 +179,4 @@ export function downloadBlob(blob: Blob, filename: string) {
   a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove()
   setTimeout(() => URL.revokeObjectURL(url), 10_000)
 }
-export const exportName = (d: GroupData, mode: ExportMode, ext: string) => `${slug(d.group.name)}-${mode}-${todayStr()}.${ext}`
+export const exportName = (d: GroupData, mode: ExportMode, ext: string, settle?: 'itemized' | 'fewest') => `${slug(d.group.name)}-${mode}${settle ? '-' + settle : ''}-${todayStr()}.${ext}`

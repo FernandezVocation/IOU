@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildPdf, buildXlsx } from './exporters'
+import { buildPdf, buildXlsx, exportName } from './exporters'
 import { computeLedger } from './ledger'
 import type { Expense, GroupData, Traveler } from './types'
 
@@ -41,9 +41,24 @@ describe('exports', () => {
     expect(text(pending, 'Shares by person')).toContain('TOTAL SHARE')
     expect(text(pending, 'Receipt files')).toContain('No receipts attached yet.')
   })
+  it('prints only the payment plan that was chosen', async () => {
+    const ExcelJS: any = await import('exceljs') // eslint-disable-line @typescript-eslint/no-explicit-any
+    const plan = async (settle?: 'itemized' | 'fewest') => {
+      const blob = await buildXlsx({ data, result: run(true), mode: 'pending', settle })
+      const wb = new (ExcelJS.default ?? ExcelJS).Workbook()
+      await wb.xlsx.load(await blob.arrayBuffer())
+      const out: string[] = []; wb.getWorksheet('Payment plan').eachRow((r: any) => out.push(r.values.slice(1).join(' | '))) // eslint-disable-line @typescript-eslint/no-explicit-any
+      return out.join('\n')
+    }
+    const it = await plan('itemized'), fw = await plan('fewest'), none = await plan()
+    expect(it).toContain('Itemized'); expect(it).not.toContain('Fewest payments')
+    expect(fw).toContain('Fewest payments'); expect(fw).not.toContain('Itemized')
+    expect(none).toBe(it)   // itemized is the default
+  })
+  it('names the file by method', () => { expect(exportName(data, 'final', 'pdf', 'fewest')).toMatch(/-final-fewest-\d{4}-\d{2}-\d{2}\.pdf$/) })
   it('builds a valid PDF, tolerating names outside Latin-1', async () => {
     for (const inc of [true, false]) {
-      const blob = await buildPdf({ data, result: run(inc), mode: inc ? 'pending' : 'final' })
+      const blob = await buildPdf({ data, result: run(inc), mode: inc ? 'pending' : 'final', settle: inc ? 'fewest' : 'itemized' })
       const head = new TextDecoder().decode((await blob.arrayBuffer()).slice(0, 5))
       expect(head).toBe('%PDF-'); expect(blob.size).toBeGreaterThan(3000)
     }
