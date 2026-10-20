@@ -6,6 +6,9 @@ import { fmtMoney, fmtPlain, toMinor } from '../lib/money'
 import { friendly, fmtDate } from '../lib/format'
 import { paymentHistory, paymentPerms, statusLabel } from '../lib/payments'
 import type { GroupData, Payment } from '../lib/types'
+import { downloadBlob } from '../lib/exporters'
+import { buildSettlementModel, buildSettlementPdf, settlementFileName } from '../lib/settlement'
+import { getSettleMode, setSettleMode, type SettleMode } from '../lib/settleMode'
 import { useAuth } from '../lib/auth'
 import { canEditGroup } from '../lib/access'
 import { ConfirmDialog, Sheet, useToast } from '../components/ui'
@@ -56,7 +59,9 @@ export default function BalancesTab() {
       return { key: id, items: list, head: <div className={'day' + (data.me?.id === id && R.rows[id]?.length ? ' me' : '')}><span>{who(data, id)} {sortBy === 'owed' ? (you ? 'are owed' : 'is owed') : verbOwe(data, id)} {fmtMoney(total, cur)}</span><span>{list.length} {list.length === 1 ? 'payment' : 'payments'}</span></div> }
     })
   }
-  const [pairMode, setPairMode] = useState<'itemized' | 'fewest'>('itemized')
+  const [pairMode, setPairModeState] = useState<SettleMode>(getSettleMode)
+  const setPairMode = (m: SettleMode) => { setPairModeState(m); setSettleMode(m) }
+  const [pdfBusy, setPdfBusy] = useState(false)
   const [sortBy, setSortBy] = useState<'pair' | 'owed' | 'owing'>('pair')
   const [open, setOpen] = useState<Set<string>>(new Set())
   const [statementId, setStatementId] = useState<string | null>(null)
@@ -139,6 +144,11 @@ export default function BalancesTab() {
           <button aria-pressed={sortBy === 'owed'} onClick={() => setSortBy('owed')}>By person owed</button>
           <button aria-pressed={sortBy === 'owing'} onClick={() => setSortBy('owing')}>By person owing</button>
         </div>
+        <button className="btn small" style={{ margin: '0 0 8px' }} disabled={pdfBusy} onClick={async () => {
+          setPdfBusy(true)
+          try { const m = buildSettlementModel({ data, mode: includeEst ? 'pending' : 'final', settle: pairMode, result: R }); downloadBlob(await buildSettlementPdf(m), settlementFileName(m)) }
+          catch (e) { toast(friendly(e)) } finally { setPdfBusy(false) }
+        }}>{pdfBusy ? 'Building…' : 'Download settlement PDF'}</button>
         <div className="muted small">{pairMode === 'itemized' ? 'Each pair settles directly, so every amount traces to specific expenses.' : 'The fewest transfers that square everyone up. Amounts come from each person’s balance.'}</div>
 
         {pairMode === 'itemized' ? (

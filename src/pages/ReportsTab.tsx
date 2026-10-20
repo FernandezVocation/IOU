@@ -5,6 +5,8 @@ import { fmtMoney } from '../lib/money'
 import { friendly, slug, todayStr } from '../lib/format'
 import { buildPdf, buildXlsx, downloadBlob, exportName, type ExportMode } from '../lib/exporters'
 import { buildInvoiceModel, buildInvoicePdf, loadInvoiceImages } from '../lib/invoice'
+import { buildSettlementModel, buildSettlementPdf, settlementFileName } from '../lib/settlement'
+import { getSettleMode, setSettleMode, type SettleMode } from '../lib/settleMode'
 import { downloadReceiptBlob } from '../lib/receipts'
 import { useAuth } from '../lib/auth'
 import { Avatar, Sheet, useToast } from '../components/ui'
@@ -17,14 +19,16 @@ export default function ReportsTab() {
   const cur = data.group.currency
   const [mode, setMode] = useState<ExportMode>('pending')
   const [billTo, setBillTo] = useState<string[]>(data.me ? [data.me.id] : [])
+  const [settle, setSettleState] = useState<SettleMode>(getSettleMode)
+  const setSettle = (m: SettleMode) => { setSettleState(m); setSettleMode(m) }
   const [attach, setAttach] = useState(false)
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
   const [ready, setReady] = useState<{ blob: Blob; filename: string } | null>(null)
 
   const model = useMemo(
-    () => (billTo.length ? buildInvoiceModel({ data, billTo, mode, note, preparedBy: data.me?.name || displayName }) : null),
-    [data, billTo, mode, note, displayName],
+    () => (billTo.length ? buildInvoiceModel({ data, billTo, mode, settle, note, preparedBy: data.me?.name || displayName }) : null),
+    [data, billTo, mode, settle, note, displayName],
   )
   const receiptCount = model ? data.expenses.filter(e => [...model.shareLines, ...model.paidLines].some(l => l.expenseId === e.id)).reduce((n, e) => n + e.receipts.length, 0) : 0
 
@@ -34,6 +38,14 @@ export default function ReportsTab() {
       const result = computeLedger({ currency: cur, travelers: data.travelers, expenses: data.expenses, payments: data.payments, rates: data.rates, includeEstimates: mode === 'pending' })
       const blob = kind === 'xlsx' ? await buildXlsx({ data, result, mode }) : await buildPdf({ data, result, mode })
       downloadBlob(blob, exportName(data, mode, kind))
+    } catch (e) { toast(friendly(e)) } finally { setBusy(null) }
+  }
+
+  async function groupSettlement() {
+    setBusy('settlement')
+    try {
+      const m = buildSettlementModel({ data, mode, settle })
+      downloadBlob(await buildSettlementPdf(m), settlementFileName(m))
     } catch (e) { toast(friendly(e)) } finally { setBusy(null) }
   }
 
@@ -48,7 +60,7 @@ export default function ReportsTab() {
         images = r.images; skipped = r.skipped
       } else setBusy('Building invoice…')
       const blob = await buildInvoicePdf(model, images, skipped)
-      setReady({ blob, filename: `${slug(data.group.name)}-invoice-${slug(model.billToLabel)}-${mode}-${todayStr()}.pdf` })
+      setReady({ blob, filename: `${slug(data.group.name)}-invoice-${slug(model.billToLabel)}-${settle}-${mode}-${todayStr()}.pdf` })
     } catch (e) { toast(friendly(e)) } finally { setBusy(null) }
   }
 
@@ -73,6 +85,12 @@ export default function ReportsTab() {
           <button aria-pressed={mode === 'pending'} onClick={() => setMode('pending')}>Pending</button>
           <button aria-pressed={mode === 'final'} onClick={() => setMode('final')}>Final</button>
         </div>
+        <div className="lbl" style={{ marginTop: 0 }}>Who pays whom (invoice and settlement)</div>
+        <div className="seg" role="group" aria-label="Settle up method" style={{ margin: '6px 0' }}>
+          <button aria-pressed={settle === 'itemized'} onClick={() => setSettle('itemized')}>Itemized</button>
+          <button aria-pressed={settle === 'fewest'} onClick={() => setSettle('fewest')}>Fewest payments</button>
+        </div>
+        <div className="muted small">{settle === 'itemized' ? 'Each pair settles directly, so every amount traces to specific expenses.' : 'The fewest transfers that square everyone up. Money may go to someone other than who paid an expense.'}</div>
       </div>
 
       <div className="panel">
@@ -82,6 +100,12 @@ export default function ReportsTab() {
           <button className="btn primary" disabled={busy !== null} onClick={() => fullReport('xlsx')}>{busy === 'xlsx' ? 'Building…' : 'Excel'}</button>
           <button className="btn primary" disabled={busy !== null} onClick={() => fullReport('pdf')}>{busy === 'pdf' ? 'Building…' : 'PDF'}</button>
         </div>
+      </div>
+
+      <div className="panel">
+        <h2>Group settlement</h2>
+        <div className="muted small">A one-page PDF for the whole group: every payment that squares everyone up, and where each person stands. Uses the method chosen above.</div>
+        <button className="btn primary block" style={{ marginTop: 10 }} disabled={busy !== null} onClick={groupSettlement}>{busy === 'settlement' ? 'Building…' : 'Settlement PDF'}</button>
       </div>
 
       <div className="panel">

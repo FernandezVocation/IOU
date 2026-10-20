@@ -33,6 +33,8 @@ export interface InvoiceModel {
   reference: string
   generatedOn: string       // YYYY-MM-DD
   mode: InvoiceMode
+  /** How the "who to pay" list was worked out. */
+  settle: InvoiceSettle
   billTo: string[]
   billToLabel: string
   preparedBy: string
@@ -162,7 +164,7 @@ export function buildInvoiceModel(args: { data: GroupData; billTo: string[]; mod
     groupName: data.group.name, look: groupLook(data.group), currency: cur,
     reference: `${slug(data.group.name).toUpperCase().slice(0, 14)}-${ymd}`,
     generatedOn: `${ymd.slice(0, 4)}-${ymd.slice(4, 6)}-${ymd.slice(6)}`,
-    mode, billTo: [...party], billToLabel: joinNames(names), preparedBy: args.preparedBy ?? '', note: (args.note ?? '').trim(),
+    mode, settle, billTo: [...party], billToLabel: joinNames(names), preparedBy: args.preparedBy ?? '', note: (args.note ?? '').trim(),
     shareLines, paidLines, paymentLines, pendingLines, totals: { share, paid, made, received, due }, payOut, payIn,
     counts: { estimated: R.counts.estimated, excluded: R.counts.excluded, missing: R.counts.missing },
   }
@@ -284,6 +286,9 @@ export async function buildInvoicePdf(m: InvoiceModel, images: InvoiceImage[] = 
   heading(owes ? 'How to pay' : 'Settling up')
   doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...INK); y += 3
   const say = (t: string) => { const lines = doc.splitTextToSize(l1(t), W - 2 * mg) as string[]; need(lines.length * 5 + 2); doc.text(lines, mg, y); y += lines.length * 5 + 1 }
+  doc.setFontSize(8.5); doc.setTextColor(...MUTED)
+  say(m.settle === 'fewest' ? 'Worked out as the fewest payments for the whole group. Amounts come from each person\'s balance and may go to someone other than who paid an expense.' : 'Worked out person by person: each amount matches the expenses shared with that person.')
+  doc.setFontSize(10); doc.setTextColor(...INK); y += 1
   if (m.payOut.length) { doc.setFont('helvetica', 'bold'); say('You pay'); doc.setFont('helvetica', 'normal'); m.payOut.forEach(p => say(`Pay ${p.name}: ${A(p.amount)}`)) }
   if (m.payIn.length) { doc.setFont('helvetica', 'bold'); say(m.payOut.length ? 'You are also owed' : 'You are owed'); doc.setFont('helvetica', 'normal'); m.payIn.forEach(p => say(`${p.name} owes you ${A(p.amount)}`)) }
   if (m.payOut.length && m.payIn.length) say(owes ? `After those are settled, you still pay a net ${A(m.totals.due)}.` : square ? 'Those cancel out exactly.' : `After those are settled, you are owed a net ${A(-m.totals.due)}.`)
