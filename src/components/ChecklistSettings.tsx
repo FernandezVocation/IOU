@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { friendly } from '../lib/format'
 import { Avatar, Sheet, useArm, useToast } from './ui'
+import { myGroups } from '../lib/myGroups'
 import GroupLookPicker from './GroupLookPicker'
 import { TYPES, type ItemType } from '../lib/checklist'
 import type { ChecklistData } from '../lib/useChecklist'
@@ -35,11 +36,8 @@ export default function ChecklistSettings({ data, reload, onClose }: { data: Che
 
   useEffect(() => {
     if (!data.isAdmin || l.group_id) return
-    supabase.from('group_members').select('groups(id, name)').then(({ data: d }) => {
-      type Row = { groups: G | G[] | null }
-      setGroups(((d ?? []) as unknown as Row[]).map(r => Array.isArray(r.groups) ? r.groups[0] : r.groups).filter((g): g is G => !!g))
-    })
-  }, [l.group_id, data.isAdmin])
+    myGroups(data.userId).then(setGroups)
+  }, [l.group_id, data.isAdmin, data.userId])
 
   async function run(p: PromiseLike<{ error: { message?: string } | null }>, ok?: string) {
     setBusy(true)

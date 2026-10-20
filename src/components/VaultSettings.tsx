@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { friendly } from '../lib/format'
 import { Avatar, Sheet, useArm, useToast } from './ui'
+import { myGroups } from '../lib/myGroups'
 import GroupLookPicker from './GroupLookPicker'
 import { useVault } from '../pages/VaultShell'
 
@@ -31,12 +32,11 @@ export default function VaultSettings({ onClose }: { onClose: () => void }) {
       } else setLinked(null)
       if (data.isAdmin && !v.group_id) {
         const [m, vs] = await Promise.all([
-          supabase.from('group_members').select('groups(id, name)').in('role', ['owner', 'admin']),
+          myGroups(data.userId, true),
           supabase.from('vaults').select('group_id').not('group_id', 'is', null),
         ])
         const taken = new Set(((vs.data ?? []) as Array<{ group_id: string }>).map(x => x.group_id))
-        type Row = { groups: G | G[] | null }
-        setGroups(((m.data ?? []) as unknown as Row[]).map(r => Array.isArray(r.groups) ? r.groups[0] : r.groups).filter((g): g is G => !!g && !taken.has(g.id)))
+        setGroups(m.filter(g => !taken.has(g.id)))
       }
     })()
   }, [v.group_id, data.isAdmin])

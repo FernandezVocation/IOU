@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { friendly } from '../lib/format'
 import { Avatar, Sheet, useArm, useToast } from './ui'
+import { myGroups } from '../lib/myGroups'
 import GroupLookPicker from './GroupLookPicker'
 import { useItinerary } from '../pages/ItineraryShell'
 
@@ -27,11 +28,10 @@ export default function ItinerarySettings({ onClose }: { onClose: () => void }) 
     (async () => {
       if (!data.isAdmin) return
       const [m, v] = await Promise.all([
-        !it.group_id ? supabase.from('group_members').select('groups(id, name)').in('role', ['owner', 'admin']) : Promise.resolve({ data: [] }),
+        !it.group_id ? myGroups(data.userId, true) : Promise.resolve([] as G[]),
         !it.vault_id ? supabase.from('vaults').select('id, name').eq('personal', false).order('name') : Promise.resolve({ data: [] }),
       ])
-      type Row = { groups: G | G[] | null }
-      setGroups(((m.data ?? []) as unknown as Row[]).map(r => Array.isArray(r.groups) ? r.groups[0] : r.groups).filter((g): g is G => !!g))
+      setGroups(m)
       setVaults((v.data ?? []) as G[])
     })()
   }, [it.group_id, it.vault_id, data.isAdmin])

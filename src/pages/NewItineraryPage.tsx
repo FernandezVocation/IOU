@@ -2,12 +2,15 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { friendly } from '../lib/format'
+import { useAuth } from '../lib/auth'
+import { myGroups } from '../lib/myGroups'
 import GroupLookPicker from '../components/GroupLookPicker'
 
 interface G { id: string; name: string }
 
 export default function NewItineraryPage() {
   const nav = useNavigate()
+  const { user } = useAuth()
   const [sp] = useSearchParams()
   const [name, setName] = useState('')
   const [look, setLook] = useState<{ icon: string; color: string } | null>(null)
@@ -23,11 +26,10 @@ export default function NewItineraryPage() {
   useEffect(() => {
     (async () => {
       const [m, v] = await Promise.all([
-        supabase.from('group_members').select('groups(id, name)').in('role', ['owner', 'admin']),
+        myGroups(user?.id ?? '', true),
         supabase.from('vaults').select('id, name').eq('personal', false).order('name'),
       ])
-      type Row = { groups: G | G[] | null }
-      const gl = ((m.data ?? []) as unknown as Row[]).map(r => Array.isArray(r.groups) ? r.groups[0] : r.groups).filter((g): g is G => !!g)
+      const gl = m
       const vl = (v.data ?? []) as G[]
       setGroups(gl); setVaults(vl)
       if (groupId && !gl.some(g => g.id === groupId)) setGroupId('')

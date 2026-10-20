@@ -3,12 +3,15 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { friendly } from '../lib/format'
 import { TYPES, type ItemType } from '../lib/checklist'
+import { useAuth } from '../lib/auth'
+import { myGroups } from '../lib/myGroups'
 import GroupLookPicker from '../components/GroupLookPicker'
 
 interface G { id: string; name: string }
 
 export default function NewChecklistPage() {
   const nav = useNavigate()
+  const { user } = useAuth()
   const [sp] = useSearchParams()
   const [name, setName] = useState('')
   const [look, setLook] = useState<{ icon: string; color: string } | null>(null)
@@ -20,9 +23,7 @@ export default function NewChecklistPage() {
 
   // Any group the person is in: every member can add to a group's list.
   useEffect(() => {
-    supabase.from('group_members').select('groups(id, name)').then(({ data }) => {
-      type Row = { groups: G | G[] | null }
-      const gl = ((data ?? []) as unknown as Row[]).map(r => Array.isArray(r.groups) ? r.groups[0] : r.groups).filter((g): g is G => !!g)
+    myGroups(user?.id ?? '').then(gl => {
       setGroups(gl)
       if (groupId && !gl.some(g => g.id === groupId)) setGroupId('')
     })
