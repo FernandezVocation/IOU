@@ -42,6 +42,7 @@ A phone-first web app for tracking and splitting expenses on group trips.
  16. `supabase/migrations/0016_diary.sql`: the private diary (entries, up to 10 photos each, a private `diary` storage bucket). Entries are Only me unless the author shares one with its trip. **Run it after 0015.** Safe to run more than once.
  17. `supabase/migrations/0017_booking_ref_diary_group.sql`: a Booking code on expenses, vault items and itinerary items; diary entries can link to a group; `link_expense_itinerary_item` for adding an itinerary item from an expense. **Run it after 0016.** Safe to run more than once.
  18. `supabase/migrations/0018_checklists.sql`: top-level Checklists: lists of to-do, purchase, packing, to-book and custom items with status, due date, assignee and who completed them; group-linked or standalone; invite link and read-only links. **Run it after 0017.** Safe to run more than once.
+ 19. `supabase/migrations/0019_checklist_item_icon.sql`: an icon for custom checklist item types. **Run it after 0018.** Safe to run more than once.
    6. `supabase/migrations/0006_simpler_roles_and_link_notes.sql`: co-admins, and notes on read-only links. **Run 0005 and then 0006 before you deploy the matching app update.** Everyone who is a member today stays a member and keeps working as before.
    4. `supabase/migrations/0004_categories_and_group_types.sql`: sub-categories on expenses and a type for each group (Trip, Household, Event, or anything typed). **Run this one before you deploy the matching app update**, because the new app calls it. (If you already ran 0001 to 0003 earlier, run only the new one.)
 3. **Authentication → URL Configuration**
@@ -71,7 +72,7 @@ Then update the Supabase *Site URL* / *Redirect URLs* (step 3 above) to the real
 
 ## Host it on Cloudflare (nothing runs on your computer)
 
-1. Finish the Supabase part above (run the eighteen SQL files, copy the Project URL and anon key).
+1. Finish the Supabase part above (run the nineteen SQL files, copy the Project URL and anon key).
 2. Put the project files on GitHub (a new repository; on the web page choose **uploading an existing file** and drag in the *contents* of the unzipped `trip-ledger` folder, so `package.json` and `wrangler.jsonc` are at the top level).
 3. In the Cloudflare dashboard open **Workers & Pages** → **Create application** → **Import a repository**, connect GitHub and pick the repository. Keep the Worker name `iou` (it must match `name` in `wrangler.jsonc`), set **Build command** `npm run build` and leave **Deploy command** as `npx wrangler deploy`.
 4. Add two **build variables** (the build-time ones, not runtime): `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (optionally `NODE_VERSION` = `20`). Deploy. If the first build ran before you added them, add them and retry the build.
@@ -157,7 +158,7 @@ The anon key in the browser is public by design. **Never put the `service_role` 
 ## Tests
 
 ```bash
-npm test        # ledger math, payments, overview, invoices, receipts ZIP, exports, balance links, and the screens, categories, breakdown and themes (337 tests)
+npm test        # ledger math, payments, overview, invoices, receipts ZIP, exports, balance links, and the screens, categories, breakdown and themes (349 tests)
 ```
 
 Database rules are tested against a real Postgres: `rls_test.sql` (52 checks: cross-group reads/writes, invite flow, owner rules, currency lock, storage access) and `payments_test.sql` (70 checks: who may confirm, edit, undo and delete a payment, partial amounts, cross-trip batches that succeed or fail as a whole, private contacts, unforgeable authors) `roles_test.sql` (54 checks: members change only their own expenses, co-admins change anything but cannot remove the owner or delete the group, who may change levels, group links versus person links, other people's amounts are not sent on a person link, receipt access follows the link) and `share_links_test.sql` (49 checks: an anonymous visitor cannot read any table or call any other function, tokens cannot be guessed or crossed between trips, nothing private is returned, expiry and turn-off work). Run the second on a fresh database (rebuild it first), then `SHARED_SHAPE_JSON=/tmp/shared_shape.json npx vitest run src/lib/shared.test.ts` checks that the real database output feeds the app's math. Needs a local Postgres with the Supabase roles stubbed:
@@ -182,7 +183,8 @@ psql -d tl -v ON_ERROR_STOP=1 -f supabase/migrations/0014_personal_vault.sql
 psql -d tl -v ON_ERROR_STOP=1 -f supabase/migrations/0015_expense_personal_vault_link.sql
 psql -d tl -v ON_ERROR_STOP=1 -f supabase/migrations/0016_diary.sql
 psql -d tl -v ON_ERROR_STOP=1 -f supabase/migrations/0017_booking_ref_diary_group.sql
-psql -d tl -v ON_ERROR_STOP=1 -f supabase/migrations/0018_checklists.sql   # then supabase/tests/checklist_test.sql (43 checks)
+psql -d tl -v ON_ERROR_STOP=1 -f supabase/migrations/0018_checklists.sql
+psql -d tl -v ON_ERROR_STOP=1 -f supabase/migrations/0019_checklist_item_icon.sql   # then supabase/tests/checklist_test.sql (47 checks)
 psql -d tl -f supabase/tests/rls_test.sql | grep -E "PASS|FAIL"      # then rebuild the database and run share_links_test.sql, payments_test.sql, categories_test.sql, roles_test.sql, currency_test.sql (17 checks: who can change icon, colour and spending currency, statement amounts, what links carry), description_test.sql (8 checks) the same way
 ```
 
@@ -223,6 +225,7 @@ supabase/migrations/0015_expense_personal_vault_link.sql  expense to personal va
 supabase/migrations/0016_diary.sql  diary entries and photos
 supabase/migrations/0017_booking_ref_diary_group.sql  booking code, diary group link, expense to itinerary item
 supabase/migrations/0018_checklists.sql  checklists, items, people, read-only links
+supabase/migrations/0019_checklist_item_icon.sql  icon for custom item types
 supabase/tests/                     database tests + stub
 src/lib/money.ts, ledger.ts         integer-cents math and the balance/"why" engine
 src/lib/exporters.ts                Excel + PDF reports

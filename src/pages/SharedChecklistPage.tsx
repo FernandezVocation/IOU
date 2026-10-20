@@ -9,7 +9,7 @@ import GroupIcon from '../components/GroupIcon'
 interface Shared {
   checklist: { name: string; icon: string | null; color: string | null }
   label: string; include_notes: boolean
-  items: Array<Pick<ChecklistItem, 'id' | 'type' | 'type_label' | 'title' | 'notes' | 'status' | 'due_on' | 'assigned_name' | 'completed_by_name' | 'qty' | 'packed_in'>>
+  items: Array<Pick<ChecklistItem, 'id' | 'type' | 'type_label' | 'type_icon' | 'title' | 'notes' | 'status' | 'due_on' | 'assigned_name' | 'completed_by_name' | 'qty' | 'packed_in'>>
 }
 
 /** A read-only list for someone without an account. Nothing here can be changed. */
@@ -37,7 +37,7 @@ export default function SharedChecklistPage() {
             <div className={'ck-row' + (i.status === 'completed' ? ' done' : '')} key={i.id}>
               <span className={'ck-tick ' + i.status} aria-label={statusLabel(i.status)}>{i.status === 'completed' ? '✓' : i.status === 'in_progress' ? '◐' : ''}</span>
               <div className="ck-main static">
-                <span className="ck-title"><ChecklistTypeIcon type={i.type} />{i.title}{i.qty > 1 && <span className="muted"> ×{i.qty}</span>}</span>
+                <span className="ck-title"><ChecklistTypeIcon type={i.type} icon={i.type_icon} />{i.title}{i.qty > 1 && <span className="muted"> ×{i.qty}</span>}</span>
                 <span className="ck-meta">
                   <span className="ck-chip">{typeLabel(full)}</span>
                   {i.due_on && <span className="ck-chip">{dueText(i.due_on)}</span>}

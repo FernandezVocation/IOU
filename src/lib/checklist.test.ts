@@ -5,7 +5,7 @@ const today = '2026-10-19'
 const ctx = { today, me: 'u1' }
 let n = 0
 const mk = (o: Partial<ChecklistItem> = {}): ChecklistItem => ({
-  id: 'i' + ++n, checklist_id: 'c1', type: 'todo', type_label: '', title: 'Item ' + n, notes: '', status: 'todo', due_on: null,
+  id: 'i' + ++n, checklist_id: 'c1', type: 'todo', type_label: '', type_icon: '', title: 'Item ' + n, notes: '', status: 'todo', due_on: null,
   assigned_name: '', assigned_user: null, completed_by_name: '', completed_by_user: null, completed_at: null,
   est_amount: null, est_currency: null, qty: 1, packed_in: '', booking_ref: '', expense_id: null, itinerary_item_id: null, vault_item_id: null,
   created_by: 'u1', created_at: '2026-10-01T00:00:0' + (n % 10) + 'Z', ...o,

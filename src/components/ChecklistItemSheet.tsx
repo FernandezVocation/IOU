@@ -4,7 +4,8 @@ import ChecklistTypeIcon from './ChecklistTypeIcon'
 import { Sheet, ConfirmDialog, useToast } from './ui'
 import { supabase } from '../lib/supabase'
 import { friendly } from '../lib/format'
-import { STATUSES, TYPES, bookingQuery, customTypeLabels, purchaseQuery, whoName, type ChecklistItem, type ItemType, type Status } from '../lib/checklist'
+import { ICONS } from '../lib/groupLook'
+import { CUSTOM_ICONS, STATUSES, TYPES, bookingQuery, customTypeLabels, iconByLabel, purchaseQuery, whoName, type ChecklistItem, type ItemType, type Status } from '../lib/checklist'
 import type { ChecklistData } from '../lib/useChecklist'
 
 const LS = 'iou.customChecklistTypes'
@@ -25,6 +26,7 @@ export default function ChecklistItemSheet({ data, item, allItems, onClose, onSa
   const editable = !item || data.canChange(item)
   const [type, setType] = useState<ItemType>(item?.type ?? list.default_type)
   const [label, setLabel] = useState(item?.type_label ?? (list.default_type === 'custom' ? list.default_label : ''))
+  const [icon, setIcon] = useState(item?.type_icon ?? '')
   const [title, setTitle] = useState(item?.title ?? '')
   const [notes, setNotes] = useState(item?.notes ?? '')
   const [due, setDue] = useState(item?.due_on ?? '')
@@ -48,6 +50,7 @@ export default function ChecklistItemSheet({ data, item, allItems, onClose, onSa
   const [error, setError] = useState<string | null>(null)
   const [confirmDel, setConfirmDel] = useState(false)
 
+  const iconsByName = useMemo(() => iconByLabel(allItems), [allItems])
   const known = useMemo(() => [...new Set([...customTypeLabels(allItems), ...remembered()])].sort((a, b) => a.localeCompare(b)), [allItems])
 
   // Things this item can point at. Each list is optional, so a failure just leaves that picker empty.
@@ -80,7 +83,7 @@ export default function ChecklistItemSheet({ data, item, allItems, onClose, onSa
     if (amt != null && !/^[A-Za-z]{3}$/.test(cur.trim())) { setError('Add a 3-letter currency, like CAD, next to the price.'); return }
     setBusy(true); setError(null)
     const row = {
-      type, type_label: type === 'custom' ? label.trim() : '', title: title.trim(), notes: notes.trim(), due_on: due || null,
+      type, type_label: type === 'custom' ? label.trim() : '', type_icon: type === 'custom' ? icon : '', title: title.trim(), notes: notes.trim(), due_on: due || null,
       est_amount: showMoney ? amt : null, est_currency: showMoney && amt != null ? cur.trim().toUpperCase() : null,
       qty: showQty ? Math.min(999, Math.max(1, Math.round(Number(qty) || 1))) : 1,
       packed_in: type === 'packing' ? packedIn.trim() : '', booking_ref: type === 'booking' || type === 'purchase' ? ref.trim() : '',
@@ -126,13 +129,24 @@ export default function ChecklistItemSheet({ data, item, allItems, onClose, onSa
         <fieldset disabled={!editable} style={{ border: 0, padding: 0, margin: 0 }}>
           <span className="lbl" style={{ marginTop: 0 }}>Type</span>
           <div className="chips" role="group" aria-label="Item type">
-            {TYPES.map(t => <button type="button" key={t.id} className="chip" aria-pressed={type === t.id} onClick={() => setType(t.id)}><ChecklistTypeIcon type={t.id} size={16} /> {t.label}</button>)}
+            {TYPES.map(t => <button type="button" key={t.id} className="chip" aria-pressed={type === t.id} onClick={() => setType(t.id)}><ChecklistTypeIcon type={t.id} size={16} icon={t.id === 'custom' ? icon : undefined} /> {t.label}</button>)}
           </div>
           {type === 'custom' && (
             <>
               <label className="lbl" htmlFor="ck-label">Name of this type</label>
-              <input id="ck-label" list="ck-labels" type="text" value={label} onChange={e => setLabel(e.target.value)} maxLength={40} placeholder="Gift, Chore, Visa…" />
+              <input id="ck-label" list="ck-labels" type="text" value={label} onChange={e => { setLabel(e.target.value); const k = iconsByName[e.target.value]; if (k) setIcon(k) }} maxLength={40} placeholder="Gift, Chore, Visa…" />
               <datalist id="ck-labels">{known.map(k => <option key={k} value={k} />)}</datalist>
+              <span className="lbl" id="ck-icl">Icon</span>
+              <div className="ck-icons" role="group" aria-labelledby="ck-icl">
+                {CUSTOM_ICONS.map(id => {
+                  const d = ICONS.find(x => x.id === id)
+                  return d ? (
+                    <button type="button" key={id} className="ck-icopick" aria-pressed={(icon || 'star') === id} aria-label={d.label} title={d.label} onClick={() => setIcon(id)}>
+                      <ChecklistTypeIcon type="custom" icon={id} size={22} />
+                    </button>
+                  ) : null
+                })}
+              </div>
             </>
           )}
           <label className="lbl" htmlFor="ck-title">Title</label>

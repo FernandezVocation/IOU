@@ -326,3 +326,7 @@ details.pair.me summary{font-weight:700}
 .ck-ico{vertical-align:-3px;margin-right:6px;flex:none}
 .chip .ck-ico{margin-right:2px}
 .chip[aria-pressed=true] .ck-ico{stroke:currentColor}
+.ck-icons{display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:6px;margin-top:6px}
+.ck-icopick{height:44px;border-radius:10px;border:1px solid var(--line);background:var(--surface);display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer}
+.ck-icopick .ck-ico{margin:0}
+.ck-icopick[aria-pressed=true]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}

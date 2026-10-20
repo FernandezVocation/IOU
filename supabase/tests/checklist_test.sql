@@ -1,4 +1,4 @@
--- Checklists (0018). Run after 0001-0018 on the stubbed Postgres (see README "Tests").
+-- Checklists (0018, 0019). Run after 0001-0019 on the stubbed Postgres (see README "Tests").
 \set ON_ERROR_STOP off
 \set QUIET on
 create schema if not exists t;
@@ -131,11 +131,18 @@ select public.create_checklist_link(:'c1', 'For Maria', false) as tok \gset
 select public.create_checklist_link(:'c1', 'With notes', true) as tok2 \gset
 select public.create_checklist_link(:'c1', 'Expired', false, now() + interval '1 second') as tok3 \gset
 select t.fails(format($$select public.create_checklist_link('%s','Past',false,now() - interval '1 day')$$, :'c1'), 'an expiry in the past is refused');
-update public.checklist_items set notes='secret note' where id=:'i_ann'::uuid;
+update public.checklist_items set notes='secret note', type='custom', type_label='Gift', type_icon='gift' where id=:'i_ann'::uuid;
+select t.ok((select type_icon from public.checklist_items where id=:'i_ann'::uuid) = 'gift', 'a custom item keeps its icon');
+select t.fails(format($$update public.checklist_items set type_icon=%L where id=%L$$, repeat('x',41), :'i_ann'), 'an icon name over 40 characters is refused');
+select set_config('request.jwt.claim.sub', :ed, false);
+update public.checklist_items set type_icon='star' where id=:'i_ann'::uuid;
+select t.ok((select type_icon from public.checklist_items where id=:'i_ann'::uuid) = 'gift', 'a member who did not add the item cannot change its icon');
+select set_config('request.jwt.claim.sub', :ann, false);
 reset role; set role anon;
 select t.ok(public.get_shared_checklist(:'tok') is not null, 'the link opens without signing in');
 select t.ok(public.get_shared_checklist(:'tok')->'items'->0->>'notes' = '' and public.get_shared_checklist(:'tok2')::text like '%secret note%', 'notes only appear when the link allows them');
 select t.ok(public.get_shared_checklist(:'tok')::text not like '%expense%' and public.get_shared_checklist(:'tok')::text not like '%booking%', 'links never expose expenses, vault or booking codes');
+select t.ok(public.get_shared_checklist(:'tok')->'items'->0->>'type_icon' is not null, 'the link carries the icon name');
 select t.ok(public.get_shared_checklist('zzz') is null and public.get_shared_checklist(repeat('0',48)) is null, 'bad tokens return nothing');
 select t.fails($$select * from public.checklist_items$$, 'anon cannot read the tables directly');
 reset role;

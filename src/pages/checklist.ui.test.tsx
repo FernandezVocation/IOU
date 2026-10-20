@@ -35,7 +35,7 @@ afterEach(cleanup)
 
 const list = (o = {}) => ({ id: 'c1', name: 'Packing', icon: null, color: null, default_type: 'packing', default_label: '', group_id: null, invite_code: 'abc', created_by: 'u1', created_at: '', ...o })
 const item = (o: Record<string, unknown> = {}) => ({
-  id: 'i1', checklist_id: 'c1', type: 'todo', type_label: '', title: 'Passport', notes: '', status: 'todo', due_on: null, assigned_name: '', assigned_user: null,
+  id: 'i1', checklist_id: 'c1', type: 'todo', type_label: '', type_icon: '', title: 'Passport', notes: '', status: 'todo', due_on: null, assigned_name: '', assigned_user: null,
   completed_by_name: '', completed_by_user: null, completed_at: null, est_amount: null, est_currency: null, qty: 1, packed_in: '', booking_ref: '', expense_id: null,
   itinerary_item_id: null, vault_item_id: null, created_by: 'u1', created_at: '2026-10-01T00:00:00Z', ...o,
 })
@@ -96,6 +96,30 @@ describe('checklist page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add item' }))
     expect(await screen.findByText('Name your custom type.')).toBeTruthy()
     expect(writes).toHaveLength(0)
+  })
+})
+
+describe('custom icon and export', () => {
+  it('saves the chosen icon with a custom item', async () => {
+    setup()
+    wrap('/checklist/c1', <ChecklistPage />, '/checklist/:id')
+    fireEvent.click(await screen.findByRole('button', { name: 'Details' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Custom' }))
+    fireEvent.change(screen.getByLabelText('Name of this type'), { target: { value: 'Gift' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Gift' }))   // the icon named Gift
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Mug' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add item' }))
+    await waitFor(() => expect(writes.some(w => w.op === 'insert')).toBe(true))
+    expect(writes.find(w => w.op === 'insert')!.row).toMatchObject({ type: 'custom', type_label: 'Gift', type_icon: 'gift', title: 'Mug' })
+  })
+  it('the export sheet counts what the choices will include', async () => {
+    setup()
+    tables.checklist_items = [item(), item({ id: 'i2', title: 'Adapter', type: 'purchase' })]
+    wrap('/checklist/c1', <ChecklistPage />, '/checklist/:id')
+    fireEvent.click(await screen.findByRole('button', { name: 'Export' }))
+    expect(await screen.findByText('2 of 2 items will be exported.')).toBeTruthy()
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Export' })).getByRole('button', { name: /Purchase/ }))
+    expect(await screen.findByText('1 of 2 items will be exported.')).toBeTruthy()
   })
 })
 

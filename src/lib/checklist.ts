@@ -3,7 +3,7 @@ export type ItemType = 'todo' | 'purchase' | 'packing' | 'booking' | 'custom'
 export type Status = 'todo' | 'in_progress' | 'completed'
 
 export interface ChecklistItem {
-  id: string; checklist_id: string; type: ItemType; type_label: string; title: string; notes: string; status: Status
+  id: string; checklist_id: string; type: ItemType; type_label: string; type_icon: string; title: string; notes: string; status: Status
   due_on: string | null; assigned_name: string; assigned_user: string | null
   completed_by_name: string; completed_by_user: string | null; completed_at: string | null
   est_amount: number | null; est_currency: string | null; qty: number; packed_in: string; booking_ref: string
@@ -18,7 +18,7 @@ export interface Checklist {
 export interface Person { key: string; name: string; user: string | null }
 
 export const CHECKLIST_COLS = 'id, name, icon, color, default_type, default_label, group_id, invite_code, created_by, created_at'
-export const ITEM_COLS = 'id, checklist_id, type, type_label, title, notes, status, due_on, assigned_name, assigned_user, completed_by_name, completed_by_user, completed_at, est_amount, est_currency, qty, packed_in, booking_ref, expense_id, itinerary_item_id, vault_item_id, created_by, created_at'
+export const ITEM_COLS = 'id, checklist_id, type, type_label, type_icon, title, notes, status, due_on, assigned_name, assigned_user, completed_by_name, completed_by_user, completed_at, est_amount, est_currency, qty, packed_in, booking_ref, expense_id, itinerary_item_id, vault_item_id, created_by, created_at'
 
 export const TYPES: Array<{ id: ItemType; label: string; hint: string }> = [
   { id: 'todo', label: 'To-do', hint: 'A task to get done' },
@@ -27,6 +27,15 @@ export const TYPES: Array<{ id: ItemType; label: string; hint: string }> = [
   { id: 'booking', label: 'To book', hint: 'Something to reserve' },
   { id: 'custom', label: 'Custom', hint: 'Your own type' },
 ]
+/** Icons a custom type can use (ids from the group icon set). */
+export const CUSTOM_ICONS = ['star', 'heart', 'gift', 'cart', 'bag', 'home', 'key', 'wrench', 'book', 'calendar', 'clock', 'phone', 'camera', 'flag', 'bulb', 'plane', 'bed', 'utensils', 'health', 'paw', 'wallet', 'trash', 'sparkles', 'folder']
+/** The icon each custom type name already uses on this list, so a name keeps the same icon everywhere. */
+export function iconByLabel(items: Array<Pick<ChecklistItem, 'type' | 'type_label' | 'type_icon'>>): Record<string, string> {
+  const m: Record<string, string> = {}
+  for (const i of items) if (i.type === 'custom' && i.type_label && i.type_icon && !m[i.type_label]) m[i.type_label] = i.type_icon
+  return m
+}
+
 export const STATUSES: Array<{ id: Status; label: string }> = [
   { id: 'todo', label: 'To do' }, { id: 'in_progress', label: 'In progress' }, { id: 'completed', label: 'Completed' },
 ]

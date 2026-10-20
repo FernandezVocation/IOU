@@ -1,4 +1,5 @@
 import type { ItemType } from '../lib/checklist'
+import { ICONS } from '../lib/groupLook'
 
 const PATHS: Record<ItemType, string> = {
   todo: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.500 12l2.500 2.500 4.500-5"/>',
@@ -10,9 +11,10 @@ const PATHS: Record<ItemType, string> = {
 export const TYPE_COLORS: Record<ItemType, string> = { todo: '#3556CC', purchase: '#1E7A42', packing: '#C25416', booking: '#7239A8', custom: '#5F6B66' }
 
 /** Small coloured icon that tells the item types apart at a glance. */
-export default function ChecklistTypeIcon({ type, size = 18 }: { type: ItemType; size?: number }) {
+export default function ChecklistTypeIcon({ type, size = 18, icon }: { type: ItemType; size?: number; icon?: string }) {
+  const own = type === 'custom' && icon ? ICONS.find(x => x.id === icon)?.svg : undefined
   return (
     <svg className="ck-ico" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={TYPE_COLORS[type]} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
-      dangerouslySetInnerHTML={{ __html: PATHS[type] }} />
+      dangerouslySetInnerHTML={{ __html: own ?? PATHS[type] }} />
   )
 }

@@ -4,12 +4,13 @@ import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
 import { friendly } from '../lib/format'
 import { useChecklistData } from '../lib/useChecklist'
-import { NO_FILTERS, counts, customTypeLabels, filterItems, todayISO, type ChecklistItem, type Filters, type GroupBy } from '../lib/checklist'
+import { NO_FILTERS, counts, customTypeLabels, filterItems, iconByLabel, todayISO, type ChecklistItem, type Filters, type GroupBy } from '../lib/checklist'
 import { tickItem } from '../lib/progress'
 import { Spinner, useToast } from '../components/ui'
 import GroupIcon from '../components/GroupIcon'
 import { ChecklistFilters, ChecklistRows } from '../components/ChecklistRows'
 import ChecklistItemSheet from '../components/ChecklistItemSheet'
+import ChecklistExport from '../components/ChecklistExport'
 import ChecklistSettings from '../components/ChecklistSettings'
 
 /** One list: quick add, filters, and the items. */
@@ -24,6 +25,7 @@ export default function ChecklistPage() {
   const [quick, setQuick] = useState('')
   const [sheet, setSheet] = useState<{ item?: ChecklistItem } | null>(null)
   const [settings, setSettings] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const [busy, setBusy] = useState(false)
   const ctx = useMemo(() => ({ today: todayISO(), me }), [me])
 
@@ -61,6 +63,7 @@ export default function ChecklistPage() {
             <h1>{l.name}</h1>
             <div className="sub">{c.done} of {c.total} done{c.overdue > 0 ? ` · ${c.overdue} overdue` : ''}{data.groupName ? ` · ${data.groupName}` : ''}</div>
           </div>
+          <button className="btn small" onClick={() => setExporting(true)}>Export</button>
           <button className="btn small" onClick={() => setSettings(true)}>People</button>
         </div>
       </div>
@@ -71,13 +74,14 @@ export default function ChecklistPage() {
         <button type="button" className="btn" onClick={() => setSheet({})}>Details</button>
       </form>
 
-      <ChecklistFilters filters={filters} onChange={setFilters} groupBy={groupBy} onGroupBy={setGroupBy} people={data.people} customLabels={customTypeLabels(data.items)} me={me} />
+      <ChecklistFilters filters={filters} onChange={setFilters} groupBy={groupBy} onGroupBy={setGroupBy} people={data.people} customLabels={customTypeLabels(data.items)} icons={iconByLabel(data.items)} me={me} />
 
       {data.items.length === 0 && <div className="empty"><b>Nothing here yet</b>Add the first item above. Each item can be a to-do, a purchase, something to pack, something to book, or your own type.</div>}
       {data.items.length > 0 && shown.length === 0 && <div className="empty"><b>No items match</b>Clear the filters to see everything.</div>}
       <ChecklistRows items={shown} people={data.people} ctx={ctx} groupBy={groupBy} onTick={tick} onOpen={i => setSheet({ item: i })} />
 
       {sheet && <ChecklistItemSheet data={data} item={sheet.item} allItems={data.items} onClose={() => setSheet(null)} onSaved={reload} />}
+      {exporting && <ChecklistExport items={data.items} title={l.name} people={data.people} ctx={ctx} startFilters={filters} startGroupBy={groupBy} onClose={() => setExporting(false)} />}
       {settings && <ChecklistSettings data={data} reload={reload} onClose={() => setSettings(false)} />}
     </div>
   )

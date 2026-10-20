@@ -3,13 +3,14 @@ import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { friendly } from '../lib/format'
-import { CHECKLIST_COLS, ITEM_COLS, NO_FILTERS, counts, customTypeLabels, filterItems, mergePeople, todayISO, type Checklist, type ChecklistItem, type Filters, type GroupBy, type Person } from '../lib/checklist'
+import { CHECKLIST_COLS, ITEM_COLS, NO_FILTERS, counts, customTypeLabels, filterItems, iconByLabel, mergePeople, todayISO, type Checklist, type ChecklistItem, type Filters, type GroupBy, type Person } from '../lib/checklist'
 import { tickItem } from '../lib/progress'
 import { Spinner, useToast } from '../components/ui'
 import TopNav from '../components/TopNav'
 import ThemeToggle from '../components/ThemeToggle'
 import GroupIcon from '../components/GroupIcon'
 import { ChecklistFilters, ChecklistRows } from '../components/ChecklistRows'
+import ChecklistExport from '../components/ChecklistExport'
 import ChecklistItemSheet from '../components/ChecklistItemSheet'
 import { useChecklistData } from '../lib/useChecklist'
 
@@ -37,6 +38,7 @@ export default function ChecklistsPage() {
   const [filters, setFilters] = useState<Filters>({ ...NO_FILTERS, status: 'open' })
   const [groupBy, setGroupBy] = useState<GroupBy>('due')
   const [open, setOpen] = useState<ChecklistItem | null>(null)
+  const [exporting, setExporting] = useState(false)
   const ctx = useMemo(() => ({ today: todayISO(), me }), [me])
 
   async function load() {
@@ -121,13 +123,15 @@ export default function ChecklistsPage() {
 
       {view === 'all' && lists && (
         <>
-          <ChecklistFilters filters={filters} onChange={setFilters} groupBy={groupBy} onGroupBy={setGroupBy} people={people} customLabels={customTypeLabels(items)} me={me} />
+          <ChecklistFilters filters={filters} onChange={setFilters} groupBy={groupBy} onGroupBy={setGroupBy} people={people} customLabels={customTypeLabels(items)} icons={iconByLabel(items)} me={me} />
+          {items.length > 0 && <button className="btn small" style={{ marginBottom: 8 }} onClick={() => setExporting(true)}>Export</button>}
           {shown.length === 0 && <div className="empty"><b>Nothing to show</b>{items.length ? 'Clear the filters to see everything.' : 'Items from all your lists appear here.'}</div>}
           <ChecklistRows items={shown} people={people} ctx={ctx} groupBy={groupBy} listNames={names} onTick={tick} onOpen={setOpen} />
         </>
       )}
       <div className="sect"><ThemeToggle /></div>
     </div>
+    {exporting && <ChecklistExport items={items} title="All checklist items" people={people} ctx={ctx} listNames={names} startFilters={filters} startGroupBy={groupBy} onClose={() => setExporting(false)} />}
     {open && <OpenItem item={open} userId={me} allItems={items} onClose={() => setOpen(null)} onSaved={load} />}
     <TopNav />
     </>
