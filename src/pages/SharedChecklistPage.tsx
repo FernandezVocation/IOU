@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { dueText, statusLabel, typeLabel, type ChecklistItem } from '../lib/checklist'
 import { Spinner } from '../components/ui'
-import ChecklistTypeIcon from '../components/ChecklistTypeIcon'
+import ChecklistTypeIcon, { TYPE_COLORS } from '../components/ChecklistTypeIcon'
 import GroupIcon from '../components/GroupIcon'
 
 interface Shared {
@@ -37,7 +37,7 @@ export default function SharedChecklistPage() {
             <div className={'ck-row' + (i.status === 'completed' ? ' done' : '')} key={i.id}>
               <span className={'ck-tick ' + i.status} aria-label={statusLabel(i.status)}>{i.status === 'completed' ? '✓' : i.status === 'in_progress' ? '◐' : ''}</span>
               <div className="ck-main static">
-                <span className="ck-title"><ChecklistTypeIcon type={i.type} icon={i.type_icon} />{i.title}{i.qty > 1 && <span className="muted"> ×{i.qty}</span>}</span>
+                <span className="ck-title">{i.title}{i.qty > 1 && <span className="muted"> ×{i.qty}</span>}</span>
                 <span className="ck-meta">
                   <span className="ck-chip">{typeLabel(full)}</span>
                   {i.due_on && <span className="ck-chip">{dueText(i.due_on)}</span>}
@@ -47,6 +47,7 @@ export default function SharedChecklistPage() {
                 </span>
                 {data.include_notes && i.notes && <span className="muted small">{i.notes}</span>}
               </div>
+              <span className="ck-tile" style={{ background: TYPE_COLORS[i.type] + '22' }}><ChecklistTypeIcon type={i.type} icon={i.type_icon} size={18} /></span>
             </div>
           )
         })}

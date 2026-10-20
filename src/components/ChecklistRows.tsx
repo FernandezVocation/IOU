@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import ChecklistTypeIcon from './ChecklistTypeIcon'
+import ChecklistTypeIcon, { TYPE_COLORS } from './ChecklistTypeIcon'
+import { ConfirmDialog } from './ui'
 import {
   NO_FILTERS, STATUSES, TYPES, dueText, groupItems, isFiltered, isOverdue, statusLabel, typeLabel, whoName,
   type ChecklistItem, type Ctx, type Filters, type GroupBy, type Person,
@@ -12,6 +13,7 @@ export function ChecklistRows({ items, people, ctx, groupBy, listNames, onTick, 
   onTick: (i: ChecklistItem) => void; onOpen: (i: ChecklistItem) => void
 }) {
   const sections = groupItems(items, groupBy, ctx, people)
+  const [reopen, setReopen] = useState<ChecklistItem | null>(null)
   return (
     <div className="ck-list">
       {sections.map(s => (
@@ -23,11 +25,11 @@ export function ChecklistRows({ items, people, ctx, groupBy, listNames, onTick, 
             const late = isOverdue(i, ctx.today)
             return (
               <div className={'ck-row' + (i.status === 'completed' ? ' done' : '')} key={i.id}>
-                <button className={'ck-tick ' + i.status} aria-label={i.status === 'completed' ? `Reopen ${i.title}` : `Mark ${i.title} completed`} aria-pressed={i.status === 'completed'} onClick={() => onTick(i)}>
+                <button className={'ck-tick ' + i.status} aria-label={i.status === 'completed' ? `Reopen ${i.title}` : `Mark ${i.title} completed`} aria-pressed={i.status === 'completed'} onClick={() => i.status === 'completed' ? setReopen(i) : onTick(i)}>
                   {i.status === 'completed' ? '✓' : i.status === 'in_progress' ? '◐' : ''}
                 </button>
                 <button className="ck-main" onClick={() => onOpen(i)} aria-label={`Open ${i.title}`}>
-                  <span className="ck-title"><ChecklistTypeIcon type={i.type} icon={i.type_icon} />{i.title}{i.qty > 1 && <span className="muted"> ×{i.qty}</span>}</span>
+                  <span className="ck-title">{i.title}{i.qty > 1 && <span className="muted"> ×{i.qty}</span>}</span>
                   <span className="ck-meta">
                     <span className="ck-chip">{typeLabel(i)}</span>
                     {i.status === 'in_progress' && <span className="ck-chip prog">In progress</span>}
@@ -39,11 +41,17 @@ export function ChecklistRows({ items, people, ctx, groupBy, listNames, onTick, 
                     {listNames?.[i.checklist_id] && <span className="ck-chip list">{listNames[i.checklist_id]}</span>}
                   </span>
                 </button>
+                <span className="ck-tile" style={{ background: TYPE_COLORS[i.type] + '22' }} title={typeLabel(i)}><ChecklistTypeIcon type={i.type} icon={i.type_icon} size={18} /></span>
               </div>
             )
           })}
         </section>
       ))}
+      {reopen && (
+        <ConfirmDialog title="Mark as not done?" tone="primary" confirmLabel="Reopen" onCancel={() => setReopen(null)} onConfirm={() => { const i = reopen; setReopen(null); onTick(i) }}>
+          “{reopen.title}” is completed. Reopening it clears who completed it and when.
+        </ConfirmDialog>
+      )}
     </div>
   )
 }

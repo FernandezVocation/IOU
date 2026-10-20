@@ -68,6 +68,18 @@ describe('checklist page', () => {
     await waitFor(() => expect(rpcs.some(r => r.fn === 'set_checklist_item_progress')).toBe(true))
     expect(rpcs.find(r => r.fn === 'set_checklist_item_progress')!.args).toMatchObject({ p_item: 'i1', p_status: 'completed', p_completed_by_user: 'u1' })
   })
+  it('asks before reopening a completed item, and does nothing if cancelled', async () => {
+    setup()
+    tables.checklist_items = [item({ status: 'completed', completed_by_user: 'u1' })]
+    wrap('/checklist/c1', <ChecklistPage />, '/checklist/:id')
+    fireEvent.click(await screen.findByRole('button', { name: 'Reopen Passport' }))
+    expect(await screen.findByText('Mark as not done?')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(rpcs.some(r => r.fn === 'set_checklist_item_progress')).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: 'Reopen Passport' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Reopen' }))
+    await waitFor(() => expect(rpcs.find(r => r.fn === 'set_checklist_item_progress')?.args).toMatchObject({ p_status: 'todo', p_completed_by_user: null }))
+  })
   it('filters by type', async () => {
     setup()
     tables.checklist_items = [item(), item({ id: 'i2', title: 'Adapter', type: 'purchase' })]
