@@ -181,3 +181,31 @@ describe('editor', () => {
     expect(screen.getByRole('alert').textContent).toMatch(/Only the person who added this/)
   })
 })
+
+describe('icons for custom names', () => {
+  it('offers an icon for a custom category and saves the choice once per name', async () => {
+    mount(data([]), '/itinerary/it/item/new')
+    fireEvent.click(screen.getByRole('button', { name: 'Custom' }))
+    expect(screen.queryByRole('group', { name: /Icon for/ })).toBeNull()   // nothing to name yet
+    fireEvent.change(screen.getByLabelText('Name of your category'), { target: { value: 'Visa' } })
+    const pick = screen.getByRole('group', { name: 'Icon for Visa' })
+    fireEvent.click(within(pick).getByRole('button', { name: 'Passport' }))
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Apply online' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(calls).toContain('update:[{"icon":"passport"}]'))
+  })
+  it('offers an icon for a typed subtype that has none, but not for a built-in one', () => {
+    mount(data([]), '/itinerary/it/item/new')
+    fireEvent.click(screen.getByRole('button', { name: 'Activities' }))
+    fireEvent.change(screen.getByLabelText(/^Kind/), { target: { value: 'Zorbing' } })
+    expect(screen.getByRole('group', { name: 'Icon for Zorbing' })).toBeTruthy()
+    fireEvent.change(screen.getByLabelText(/^Kind/), { target: { value: 'Beach' } })
+    expect(screen.queryByRole('group', { name: /Icon for/ })).toBeNull()
+  })
+  it('shows the icon already chosen for that name, with no new icon needed', () => {
+    mount(data([], { icons: { category: { visa: 'passport' }, subtype: {} } }), '/itinerary/it/item/new')
+    fireEvent.click(screen.getByRole('button', { name: 'Custom' }))
+    fireEvent.change(screen.getByLabelText('Name of your category'), { target: { value: 'visa' } })
+    expect(within(screen.getByRole('group', { name: 'Icon for visa' })).getByRole('button', { name: 'Passport' }).getAttribute('aria-pressed')).toBe('true')
+  })
+})

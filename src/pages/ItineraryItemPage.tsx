@@ -56,7 +56,7 @@ export default function ItineraryItemPage() {
         <div>
           <Link className="backlink" to={back}>← {home.name}</Link>
           <div className="gh">
-            <CategoryIcon category={it.category} size={44} />
+            <CategoryIcon category={it.category} categoryLabel={it.category_label} subtype={it.subtype} icons={data.icons} size={44} />
             <div>
               <h1>{it.title}</h1>
               {it.description && <span className="vdesc big">{it.description}</span>}

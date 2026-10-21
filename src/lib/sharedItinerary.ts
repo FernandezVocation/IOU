@@ -6,6 +6,8 @@ export interface SharedItinerary {
   label: string
   include_notes: boolean
   items: SharedItineraryItem[]
+  /** Icons chosen for custom category and subtype names. */
+  icons?: Array<{ kind: string; name: string; icon: string }>
 }
 
 /** null when the link is unknown, expired or turned off. */

@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { spendLabel, type ItemSpend } from '../lib/itinerarySpend'
 import { Link } from 'react-router-dom'
 import GroupIcon from '../components/GroupIcon'
+import type { IconMap } from '../lib/itineraryIcons'
+import SubtypeGlyph from '../components/SubtypeGlyph'
 import CategoryIcon from '../components/CategoryIcon'
 import { arrange, CATEGORIES, directionsUrl, filterItems, kindLabel, NO_FILTERS, peopleIn, placeOf, subtypesIn, type Arrange, type Filters, type ItineraryItem } from '../lib/itinerary'
 import { fmtDate, fmtTime } from '../lib/format'
@@ -13,7 +15,7 @@ import ItineraryExport from '../components/ItineraryExport'
 const pinIcon = <svg className="i" viewBox="0 0 24 24" width="18" height="18"><path d="M12 21s7-6.2 7-11a7 7 0 0 0-14 0c0 4.8 7 11 7 11z" /><circle cx="12" cy="10" r="2.5" /></svg>
 const ticketIcon = <svg className="i" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M3 8a2 2 0 0 0 0 4v0a2 2 0 0 1 0 4v2h18v-2a2 2 0 0 1 0-4 2 2 0 0 0 0-4V6H3z" /></svg>
 
-function Row({ iid, it, by, cost, ticket, kind = '' }: { iid: string; it: ItineraryItem; by: Arrange; cost?: string; ticket: boolean; kind?: string }) {
+function Row({ iid, it, by, cost, ticket, kind = '', icons }: { iid: string; it: ItineraryItem; by: Arrange; cost?: string; ticket: boolean; kind?: string; icons?: IconMap }) {
   const dir = directionsUrl(it)
   const shortDate = it.starts_on ? fmtDate(it.starts_on).replace(/^[^,]+, /, '') : ''
   const route = it.from_place && it.to_place ? `${it.from_place} → ${it.to_place}` : ''
@@ -22,7 +24,7 @@ function Row({ iid, it, by, cost, ticket, kind = '' }: { iid: string; it: Itiner
     <div className="vrow">
       <Link className="vmain" to={`/itinerary/${iid}/item/${it.id}`}>
         <span className="vtime">{it.starts_at ? fmtTime(it.starts_at) : '–'}<small>{by === 'date' ? '' : shortDate}</small></span>
-        <CategoryIcon category={it.category} size={38} />
+        <CategoryIcon category={it.category} categoryLabel={it.category_label} subtype={it.subtype} icons={icons} size={38} />
         <span className="vtx">
           <b>{it.title}{ticket && <span className="tkt" title="Has a vault ticket" aria-label="Has a vault ticket">{ticketIcon}</span>}{it.private && <em className="pv">Only me</em>}{cost && <em className="pv amt">{cost}</em>}</b>
           <span>{sub}</span>
@@ -87,7 +89,7 @@ export default function ItineraryHome() {
         {by === 'type' && subs.length > 1 && (
           <div className="chips" role="group" aria-label="Subtype">
             <button className="chip" aria-pressed={f.subtype === ''} onClick={() => setF({ ...f, subtype: '' })}>All</button>
-            {subs.map(n => <button key={n} className="chip" aria-pressed={f.subtype === n} onClick={() => setF({ ...f, subtype: f.subtype === n ? '' : n })}>{n}</button>)}
+            {subs.map(n => <button key={n} className="chip" aria-pressed={f.subtype === n} onClick={() => setF({ ...f, subtype: f.subtype === n ? '' : n })}><SubtypeGlyph subtype={n} icons={data.icons} /> {n}</button>)}
           </div>
         )}
         <div className="frow">
@@ -125,8 +127,8 @@ export default function ItineraryHome() {
             <h2 className="vday">{s.label}{s.sub && by === 'date' && <span>{s.sub}</span>}</h2>
             {(s.subs ?? [{ label: '', items: s.items }]).map(g => (
               <div key={g.label}>
-                {s.subs && <h3 className="vsub">{g.label}<span className="muted small"> · {g.items.length}</span></h3>}
-                {g.items.map(x => <Row key={x.id} iid={it.id} it={x} by={by} kind={by === 'type' && !s.subs ? x.subtype : ''} cost={costOf(x.id)} ticket={!!x.vault_item_id && data.tickets.has(x.vault_item_id)} />)}
+                {s.subs && <h3 className="vsub"><SubtypeGlyph subtype={g.label} icons={data.icons} /> {g.label}<span className="muted small"> · {g.items.length}</span></h3>}
+                {g.items.map(x => <Row key={x.id} iid={it.id} it={x} by={by} kind={by === 'type' && !s.subs ? x.subtype : ''} cost={costOf(x.id)} ticket={!!x.vault_item_id && data.tickets.has(x.vault_item_id)} icons={data.icons} />)}
               </div>
             ))}
           </section>

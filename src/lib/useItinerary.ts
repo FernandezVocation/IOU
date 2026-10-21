@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './supabase'
 import { friendly } from './format'
 import { buildAliases, canonPeople, type ItineraryItem, type ItineraryMember, type ItineraryRow } from './itinerary'
+import { buildIconMap, type IconMap } from './itineraryIcons'
 import { spendByItem, type Spend, type SpendExpense } from './itinerarySpend'
 
 export interface ItineraryData {
@@ -19,6 +20,8 @@ export interface ItineraryData {
   spend: Spend | null
   /** Linked vault items the viewer can actually open (the rest are hidden by row-level rules), so the ticket icon is shown only when it leads somewhere. */
   tickets: Set<string>
+  /** Icons chosen for custom category and subtype names in this itinerary. */
+  icons?: IconMap
   myRole: 'owner' | 'admin' | 'member'
   userId: string
   isAdmin: boolean
@@ -33,10 +36,11 @@ export function useItineraryData(id: string, userId: string) {
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
-    const [it, items, pp] = await Promise.all([
+    const [it, items, pp, ic] = await Promise.all([
       supabase.from('itineraries').select('id, name, icon, color, group_id, vault_id, invite_code, created_at').eq('id', id).maybeSingle(),
       supabase.from('itinerary_items').select('*').eq('itinerary_id', id),
       supabase.rpc('itinerary_people', { p_it: id }),
+      supabase.from('itinerary_icons').select('kind, name_key, icon').eq('itinerary_id', id),   // optional: a failure only means default icons
     ])
     const err = it.error || items.error || pp.error
     if (err) { setError(friendly(err)); setLoading(false); return }
@@ -83,7 +87,7 @@ export function useItineraryData(id: string, userId: string) {
     const myRole = people.find(p => p.user_id === userId)?.role ?? 'member'
     const isAdmin = myRole === 'owner' || myRole === 'admin'
     setData({
-      itinerary: row, items: ((items.data ?? []) as ItineraryItem[]).map(i => ({ ...i, people: canonPeople(i.people, aliases) })), aliases, people, groupNames, groupName, vaultName, spend, tickets, myRole, userId, isAdmin, isOwner: myRole === 'owner',
+      itinerary: row, items: ((items.data ?? []) as ItineraryItem[]).map(i => ({ ...i, people: canonPeople(i.people, aliases) })), aliases, people, groupNames, groupName, vaultName, spend, tickets, icons: buildIconMap(ic.error ? [] : ((ic.data ?? []) as Array<{ kind: string; name_key: string; icon: string }>)), myRole, userId, isAdmin, isOwner: myRole === 'owner',
       canChange: i => i.created_by === userId || isAdmin,
     })
     setError(null); setLoading(false)

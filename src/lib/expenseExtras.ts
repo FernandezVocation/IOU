@@ -46,7 +46,7 @@ export function useGroupVaultItems(groupId: string, needed: boolean): { items: L
   return state
 }
 
-export interface LinkedItineraryItem { id: string; title: string; category: string; subtype: string; starts_on: string | null; itinerary_id: string; itinerary_name: string }
+export interface LinkedItineraryItem { id: string; title: string; category: string; category_label: string; subtype: string; starts_on: string | null; itinerary_id: string; itinerary_name: string }
 
 /**
  * The itinerary items, in itineraries linked to this group, that the signed-in person can see (the database filters
@@ -62,7 +62,7 @@ export function useGroupItineraryItems(groupId: string, needed: boolean): Linked
         const it = await supabase.from('itineraries').select('id, name').eq('group_id', groupId)
         const list = (it.data ?? []) as Array<{ id: string; name: string }>
         if (!list.length) { if (live) setItems([]); return }
-        const r = await supabase.from('itinerary_items').select('id, title, category, subtype, starts_on, itinerary_id').in('itinerary_id', list.map(x => x.id)).order('starts_on', { ascending: true, nullsFirst: false })
+        const r = await supabase.from('itinerary_items').select('id, title, category, category_label, subtype, starts_on, itinerary_id').in('itinerary_id', list.map(x => x.id)).order('starts_on', { ascending: true, nullsFirst: false })
         const names = new Map(list.map(x => [x.id, x.name]))
         if (live) setItems(((r.data ?? []) as Array<Omit<LinkedItineraryItem, 'itinerary_name'>>).map(x => ({ ...x, itinerary_name: names.get(x.itinerary_id) ?? '' })))
       } catch { if (live) setItems([]) }

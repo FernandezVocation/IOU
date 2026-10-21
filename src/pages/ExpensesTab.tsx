@@ -5,6 +5,8 @@ import { fmtMoney, toMinor } from '../lib/money'
 import { fmtDate, fmtTime } from '../lib/format'
 import { catLabel } from '../lib/categories'
 import type { Expense } from '../lib/types'
+import type { IconMap } from '../lib/itineraryIcons'
+import { iconsFor, useAllItineraryIcons } from '../lib/useItineraryIcons'
 import { statusLabel, useGroupItineraryItems, useGroupVaultItems, type LinkedItem, type LinkedItineraryItem } from '../lib/expenseExtras'
 import CategoryIcon from '../components/CategoryIcon'
 import TypeIcon from '../components/TypeIcon'
@@ -21,6 +23,7 @@ export default function ExpensesTab() {
   const { items: vaultItems } = useGroupVaultItems(data.group.id, data.expenses.some(e => !!e.vault_item_id))
   const linked = useMemo(() => new Map(vaultItems.map(i => [i.id, i])), [vaultItems])
   const itinItems = useGroupItineraryItems(data.group.id, data.expenses.some(e => !!e.itinerary_item_id))
+  const allIcons = useAllItineraryIcons(data.expenses.some(e => !!e.itinerary_item_id))
   const itinLinked = useMemo(() => new Map(itinItems.map(i => [i.id, i])), [itinItems])
   const needs = data.expenses.filter(e => R.calc[e.id]?.status !== 'confirmed')
 
@@ -58,7 +61,7 @@ export default function ExpensesTab() {
         return (
           <div key={d}>
             <div className="day"><span>{fmtDate(d)}</span><span>{fmtMoney(tot, cur)}</span></div>
-            {items.map(e => <Row key={e.id} e={e} c={R.calc[e.id]} item={e.vault_item_id ? linked.get(e.vault_item_id) : undefined} plan={e.itinerary_item_id ? itinLinked.get(e.itinerary_item_id) : undefined} />)}
+            {items.map(e => <Row key={e.id} allIcons={allIcons} e={e} c={R.calc[e.id]} item={e.vault_item_id ? linked.get(e.vault_item_id) : undefined} plan={e.itinerary_item_id ? itinLinked.get(e.itinerary_item_id) : undefined} />)}
           </div>
         )
       })}
@@ -66,7 +69,7 @@ export default function ExpensesTab() {
   )
 }
 
-function Row({ e, c, item, plan }: { e: Expense; c: Calc; item?: LinkedItem; plan?: LinkedItineraryItem }) {
+function Row({ e, c, item, plan, allIcons }: { e: Expense; c: Calc; item?: LinkedItem; plan?: LinkedItineraryItem; allIcons: Record<string, IconMap> }) {
   const { data } = useGroup()
   const cur = data.group.currency
   const foreign = e.currency !== cur
@@ -75,7 +78,7 @@ function Row({ e, c, item, plan }: { e: Expense; c: Calc; item?: LinkedItem; pla
   const split = e.split_mode === 'equal' ? `split ${n} way${n === 1 ? '' : 's'}` : 'custom split'
   return (
     <Link className="exp" to={`/g/${data.group.id}/expense/${e.id}`}>
-      <div className="v">{e.vendor || 'Untitled'}{item && <span className="vlink" role="img" aria-label={`Linked to vault item: ${item.title}`} title={item.title}><TypeIcon type={item.type} size={20} /></span>}{plan && <span className="vlink" role="img" aria-label={`Linked to itinerary item: ${plan.title}`} title={plan.title}><CategoryIcon category={plan.category} size={20} /></span>}{e.status && e.status !== 'final' && <span className={'stchip st-' + e.status}>{statusLabel(e.status)}</span>}</div>
+      <div className="v">{e.vendor || 'Untitled'}{item && <span className="vlink" role="img" aria-label={`Linked to vault item: ${item.title}`} title={item.title}><TypeIcon type={item.type} size={20} /></span>}{plan && <span className="vlink" role="img" aria-label={`Linked to itinerary item: ${plan.title}`} title={plan.title}><CategoryIcon category={plan.category} categoryLabel={plan.category_label} subtype={plan.subtype} icons={iconsFor(allIcons, plan.itinerary_id)} size={20} /></span>}{e.status && e.status !== 'final' && <span className={'stchip st-' + e.status}>{statusLabel(e.status)}</span>}</div>
       <div className="amt">{fmtMoney(toMinor(e.amount, e.currency), e.currency)}</div>
       <div className="m">{meta}{e.receipts.length > 0 && <> · <span className="clip">{clipIcon}{e.receipts.length}</span></>}</div>
       {foreign ? (c.status === 'confirmed' ? <div className="sb">{fmtMoney(c.minor as number, cur)}</div>

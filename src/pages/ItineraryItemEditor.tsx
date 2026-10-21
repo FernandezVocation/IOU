@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { friendly } from '../lib/format'
+import IconPicker from '../components/IconPicker'
+import { EMPTY_ICONS, iconKey } from '../lib/itineraryIcons'
+import { subtypeIcon } from '../lib/subtypeIcons'
 import { CATEGORIES, canonPeople, categoryOf, customNames, type Category } from '../lib/itinerary'
 import { useToast } from '../components/ui'
 import { useItinerary } from './ItineraryShell'
@@ -29,6 +32,10 @@ export default function ItineraryItemEditor() {
   const [category, setCategory] = useState<Category>(cat0)
   const [catLabel, setCatLabel] = useState(existing?.category_label ?? pre('category_label'))
   const [subtype, setSubtype] = useState(existing?.subtype ?? pre('subtype'))
+  // Icons are chosen once per name: null means untouched, so the name's current icon (if any) shows and is kept.
+  const icons = data.icons ?? EMPTY_ICONS
+  const [catPick, setCatPick] = useState<string | null>(null)
+  const [subPick, setSubPick] = useState<string | null>(null)
   const [title, setTitle] = useState(existing?.title ?? pre('title'))
   const [description, setDescription] = useState(existing?.description ?? pre('description'))
   const [vendor, setVendor] = useState(existing?.vendor ?? pre('vendor'))
@@ -83,6 +90,21 @@ export default function ItineraryItemEditor() {
     setTyped('')
   }
 
+  const catKey = iconKey(catLabel), subKey = iconKey(subtype)
+  const catIcon = catPick ?? icons.category[catKey] ?? ''
+  const subIcon = subPick ?? icons.subtype[subKey] ?? ''
+  const showCatPicker = category === 'custom' && !!catKey
+  const showSubPicker = !!subKey && !subtypeIcon(subtype.trim())   // built-in kinds already have their own icon
+
+  /** Set the icon for a name: change it if the name already has one, otherwise add it. Applies to every item with that name. */
+  async function saveIcon(kind: 'category' | 'subtype', key: string, icon: string) {
+    const u = await supabase.from('itinerary_icons').update({ icon }).eq('itinerary_id', home.id).eq('kind', kind).eq('name_key', key).select('icon')
+    if (u.error) return false
+    if ((u.data ?? []).length) return true
+    const i = await supabase.from('itinerary_icons').insert({ itinerary_id: home.id, kind, name_key: key, icon })
+    return !i.error
+  }
+
   async function submit(e: FormEvent) {
     e.preventDefault()
     if (!title.trim()) { setError('Give it a title.'); return }
@@ -114,9 +136,13 @@ export default function ItineraryItemEditor() {
     if (fromExpense && id) { const l = await supabase.rpc('link_expense_itinerary_item', { p_expense: fromExpense, p_item: id }); linkProblem = !!l.error }
     const fromList = !existing ? sp.get('checklist') : null
     if (fromList && id) { const l = await supabase.from('checklist_items').update({ itinerary_item_id: id }).eq('id', fromList); if (l.error) linkProblem = true }
+    let iconProblem = false
+    if (showCatPicker && catPick && catPick !== icons.category[catKey]) iconProblem = !(await saveIcon('category', catKey, catPick)) || iconProblem
+    if (showSubPicker && subPick && subPick !== icons.subtype[subKey]) iconProblem = !(await saveIcon('subtype', subKey, subPick)) || iconProblem
     await reload()
     setBusy(false)
-    toast(linkProblem ? 'Added, but the expense could not be linked. Open the expense to try again.' : existing ? 'Updated.' : fromExpense ? 'Added and linked to the expense.' : 'Added to the itinerary.')
+    if (iconProblem) toast('Saved, but the icon could not be set. Try again from Edit.')
+    else toast(linkProblem ? 'Added, but the expense could not be linked. Open the expense to try again.' : existing ? 'Updated.' : fromExpense ? 'Added and linked to the expense.' : 'Added to the itinerary.')
     nav(`${back}/item/${id}`, { replace: true })
   }
 
@@ -139,6 +165,13 @@ export default function ItineraryItemEditor() {
             <label className="lbl" htmlFor="icl">Name of your category</label>
             <input id="icl" type="text" value={catLabel} maxLength={40} list="icnames" autoComplete="off" onChange={e => setCatLabel(e.target.value)} placeholder="Family, Work call, Photography" />
             <datalist id="icnames">{known.map(n => <option key={n} value={n} />)}</datalist>
+            {showCatPicker && (
+              <>
+                <span className="lbl">Icon for “{catLabel.trim()}”</span>
+                <IconPicker label={`Icon for ${catLabel.trim()}`} value={catIcon} color={c.ink} onChange={setCatPick} />
+                <div className="muted small" style={{ marginTop: 4 }}>Used for every item in this category in this itinerary.</div>
+              </>
+            )}
           </>
         )}
         <label className="lbl" htmlFor="ist">Kind{category === 'custom' ? ' (optional)' : ''}</label>
@@ -148,6 +181,13 @@ export default function ItineraryItemEditor() {
           </div>
         )}
         <input id="ist" type="text" value={subtype} maxLength={40} onChange={e => setSubtype(e.target.value)} placeholder={c.subs.length ? 'Or type your own' : 'Anything'} />
+        {showSubPicker && (
+          <>
+            <span className="lbl">Icon for “{subtype.trim()}”</span>
+            <IconPicker label={`Icon for ${subtype.trim()}`} value={subIcon} color={c.ink} onChange={setSubPick} />
+            <div className="muted small" style={{ marginTop: 4 }}>Used for every “{subtype.trim()}” item in this itinerary.</div>
+          </>
+        )}
 
         <label className="lbl" htmlFor="it1">Title</label>
         <input id="it1" type="text" value={title} maxLength={120} onChange={e => setTitle(e.target.value)} placeholder={category === 'transport' ? 'Italo' : category === 'stay' ? 'Hotel Roma Centro' : 'Name'} autoFocus={!existing && !fromVault} />

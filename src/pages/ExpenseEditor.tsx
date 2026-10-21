@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import { COMMON_CURRENCIES, friendly, nowTime, todayStr } from '../lib/format'
 import { allocate, currencyDigits, fmtMoney, fromMinor, isValidCurrency, parseNum, toMinor } from '../lib/money'
 import type { Expense, ExpenseStatus, Receipt, SplitMode } from '../lib/types'
+import { iconsFor, useAllItineraryIcons } from '../lib/useItineraryIcons'
 import { STATUSES, useGroupItineraryItems, useGroupVaultItems } from '../lib/expenseExtras'
 import CategoryIcon from '../components/CategoryIcon'
 import TypeIcon from '../components/TypeIcon'
@@ -66,6 +67,7 @@ export default function ExpenseEditor() {
   const g = data.group, base = g.currency
   const { items: vaultItems, vaultId } = useGroupVaultItems(g.id, true)
   const planItems = useGroupItineraryItems(g.id, true)
+  const allIcons = useAllItineraryIcons()
   const spending = g.spending_currency && g.spending_currency !== base ? g.spending_currency : null   // set only when expenses are usually entered in another currency
   const existing: Expense | undefined = eid === 'new' ? undefined : data.expenses.find(e => e.id === eid)
   const back = '/g/' + g.id
@@ -413,7 +415,7 @@ export default function ExpenseEditor() {
               {f.planId && !planItems.some(i => i.id === f.planId) && <option value={f.planId}>(an itinerary item you cannot see)</option>}
             </select>
             {(() => { const it = planItems.find(i => i.id === f.planId); return it ? (
-              <div className="vitem"><CategoryIcon category={it.category} size={34} /><span className="vtx"><b>{it.title}</b><div className="muted small">{it.itinerary_name}</div></span><Link className="btn small" to={`/itinerary/${it.itinerary_id}/item/${it.id}`}>Open</Link></div>
+              <div className="vitem"><CategoryIcon category={it.category} categoryLabel={it.category_label} subtype={it.subtype} icons={iconsFor(allIcons, it.itinerary_id)} size={34} /><span className="vtx"><b>{it.title}</b><div className="muted small">{it.itinerary_name}</div></span><Link className="btn small" to={`/itinerary/${it.itinerary_id}/item/${it.id}`}>Open</Link></div>
             ) : null })()}
           </>
         )}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import GroupIcon from '../components/GroupIcon'
+import { buildIconMap } from '../lib/itineraryIcons'
 import CategoryIcon from '../components/CategoryIcon'
 import { Spinner, ToastProvider } from '../components/ui'
 import { friendly } from '../lib/format'
@@ -34,6 +35,7 @@ function Inner() {
     return () => meta.remove()
   }, [load])
 
+  const icons = useMemo(() => buildIconMap(state.s === 'ok' ? (state.v.icons ?? []) : []), [state])
   const sections = useMemo(() => state.s === 'ok' ? arrange(state.v.items.map(asItem), 'date') : [], [state])
 
   if (state.s === 'loading') return <Spinner />
@@ -65,7 +67,7 @@ function Inner() {
             return (
               <button key={it.id} className="vrow vbtn" onClick={() => setOpen(full)}>
                 <span className="vtime">{it.starts_at ? whenLabel({ starts_on: null, starts_at: it.starts_at, ends_on: null, ends_at: null }) : '–'}</span>
-                <CategoryIcon category={it.category} size={38} />
+                <CategoryIcon category={it.category} categoryLabel={it.category_label} subtype={it.subtype} icons={icons} size={38} />
                 <span className="vtx"><b>{it.title}{full.has_ticket && <span className="tkt" aria-label="Has a ticket"><svg className="i" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M3 8a2 2 0 0 0 0 4v0a2 2 0 0 1 0 4v2h18v-2a2 2 0 0 1 0-4 2 2 0 0 0 0-4V6H3z" /></svg></span>}</b><span>{[kindLabel(it), route || placeOf(it)].filter(Boolean).join(' · ')}</span></span>
                 {it.description && <span className="vdesc" title={it.description}>{it.description}</span>}
               </button>
