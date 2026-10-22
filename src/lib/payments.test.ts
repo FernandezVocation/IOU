@@ -18,7 +18,13 @@ describe('who may do what with a payment (mirrors the database)', () => {
     expect(paymentPerms(data(), p, 'uA').canConfirm).toBe(true)     // receiver
     expect(paymentPerms(data(), p, 'uB').canConfirm).toBe(false)    // creator
     expect(paymentPerms(data(), p, 'uC').canConfirm).toBe(false)    // unrelated
-    expect(paymentPerms(data(true), p, 'uOwner').canConfirm).toBe(false) // even the owner: the receiver has an account
+    expect(paymentPerms(data(), p, 'uOwner').canConfirm).toBe(false) // a plain member, even with an account
+  })
+  it('an owner or co-admin can mark a payment received for the receiver, but not one they sent themselves', () => {
+    const p = P({})
+    expect(paymentPerms(data(true), p, 'uOwner').canConfirm).toBe(true)
+    expect(paymentPerms(data(true), p, 'uOwner').confirmHint).toMatch(/as an admin/)
+    expect(paymentPerms(data(true), P({ from_id: 'bo' }), 'uB').canConfirm).toBe(false)   // admin who is the payer
   })
   it('pending payment to someone WITHOUT an account: another member (not the payer) or the owner can confirm', () => {
     const p = P({ from_id: 'bo', to_id: 'jo' })

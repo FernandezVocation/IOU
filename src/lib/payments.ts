@@ -27,13 +27,15 @@ export function paymentPerms(data: GroupData, p: Payment, userId: string): Payme
   const isParty = isRecv || (payUser !== null && payUser === userId)
   const manage = data.isOwner || p.created_by === userId || isParty
   const allowed = isPending(p) ? manage : data.isOwner || isRecv
-  const canConfirm = isPending(p) && (recvUser !== null ? isRecv : data.isOwner || payUser !== userId)
+  // The receiver, or a group admin on their behalf (never for a payment they sent), or anyone but the payer when the receiver has no account.
+  const isPayer = payUser !== null && payUser === userId
+  const canConfirm = isPending(p) && (recvUser !== null ? (isRecv || (data.isOwner && !isPayer)) : data.isOwner || !isPayer)
   const to = data.travelers.find(t => t.id === p.to_id)?.name ?? 'the receiver'
   return {
     canEdit: allowed, canDelete: allowed, canConfirm,
     // Undo a mistaken tick: whoever confirmed it, the receiver, or the owner (mirrors unconfirm_payment()).
     canUnconfirm: !isPending(p) && (data.isOwner || p.confirmed_by === userId || isRecv),
-    confirmHint: isPending(p) ? (recvUser !== null ? (isRecv ? 'Sent. Waiting for you to confirm you received it.' : `Sent. Waiting for ${to} to confirm they received it.`) : `Sent. ${to} has no account, so another member of the group can confirm for them.`) : '',
+    confirmHint: isPending(p) ? (recvUser !== null ? (isRecv ? 'Sent. Waiting for you to confirm you received it.' : `Sent. Waiting for ${to} to confirm they received it${data.isOwner && !isPayer ? ', or you can mark it received as an admin' : ''}.`) : `Sent. ${to} has no account, so another member of the group can confirm for them.`) : '',
   }
 }
 
