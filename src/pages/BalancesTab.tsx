@@ -243,7 +243,7 @@ export default function BalancesTab() {
         <Link className="btn primary block" style={{ marginTop: 10 }} to={`/g/${data.group.id}/reports`}>Open reports</Link>
       </div>
 
-      {sheet && <PaymentSheet payment={sheet.payment} from={sheet.from} to={sheet.to} onClose={() => setSheet(null)} />}
+      {sheet && <PaymentSheet payment={sheet.payment} from={sheet.from} to={sheet.to} mode={pairMode} onClose={() => setSheet(null)} />}
 
       {statementId && (
         <Sheet title={`${who(data, statementId, false)}’s statement`} onClose={() => setStatementId(null)}>

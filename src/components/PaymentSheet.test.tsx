@@ -115,3 +115,17 @@ describe('editing and deleting a payment', () => {
     expect((await screen.findByRole('alertdialog')).textContent).toMatch(/balances go back up/)
   })
 })
+
+describe('fewest payments', () => {
+  // Itemized, Jordan owes Alex 100 and Sam 20; the fewest plan has Jordan pay Alex 120 in one go.
+  const sam: Expense = { ...hotel, id: 'e2', vendor: 'Taxi', amount: 60, payer_id: 'sam' }
+  it('suggests the full amount from the plan, including what is routed through the receiver', () => {
+    mount({ from: 'jo', to: 'alex', mode: 'fewest', onClose: () => {} }, base({ expenses: [hotel, sam] }))
+    expect((screen.getByLabelText(/Amount/) as HTMLInputElement).value).toBe('120')
+    expect(screen.getByText(/Jordan owes Alex CAD 120.00/)).toBeTruthy()
+  })
+  it('itemized still suggests only the direct amount', () => {
+    mount({ from: 'jo', to: 'alex', onClose: () => {} }, base({ expenses: [hotel, sam] }))
+    expect((screen.getByLabelText(/Amount/) as HTMLInputElement).value).toBe('100')
+  })
+})

@@ -8,9 +8,10 @@ import type { Payment } from '../lib/types'
 import { ConfirmDialog, Sheet, useToast } from './ui'
 import { useGroup } from '../pages/GroupShell'
 import { useAuth } from '../lib/auth'
+import type { SettleMode } from '../lib/settleMode'
 
 /** Record or edit a payment: any amount (partial is fine), any date, with method and note. */
-export default function PaymentSheet({ payment, from, to, onClose }: { payment?: Payment; from?: string; to?: string; onClose: () => void }) {
+export default function PaymentSheet({ payment, from, to, mode = 'itemized', onClose }: { payment?: Payment; from?: string; to?: string; mode?: SettleMode; onClose: () => void }) {
   const { data, reload } = useGroup()
   const { user } = useAuth()
   const toast = useToast()
@@ -33,9 +34,11 @@ export default function PaymentSheet({ payment, from, to, onClose }: { payment?:
   const owedMinor = useMemo(() => {
     const others = data.payments.filter(p => p.id !== payment?.id)
     const R = computeLedger({ currency: cur, travelers: data.travelers, expenses: data.expenses, payments: others, rates: data.rates, includeEstimates: true })
+    // Fewest payments: what the plan says this person sends, which includes amounts routed through the receiver.
+    if (mode === 'fewest') return R.transfers.find(t => t.from === fromId && t.to === toId)?.amount ?? 0
     const pair = R.pairs.find(p => p.debtor === fromId && p.creditor === toId)
     return pair ? pair.net : 0
-  }, [data, cur, payment?.id, fromId, toId])
+  }, [data, cur, payment?.id, fromId, toId, mode])
 
   const [amount, setAmount] = useState(() => {
     if (payment) return String(payment.amount)
