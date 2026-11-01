@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { currencyOption } from '../components/currencyOption'
 import { CurrencySelect } from '../components/CurrencySelect'
+import CardRates from '../components/CardRates'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { COMMON_CURRENCIES, friendly } from '../lib/format'
@@ -79,7 +80,7 @@ export default function TripTab() {
 
   const spendCur = g.spending_currency && g.spending_currency !== cur ? g.spending_currency : null
   const used = new Set(data.expenses.map(e => e.currency).filter(c => c !== cur))
-  Object.keys(data.rates).forEach(c => used.add(c))
+  Object.keys(data.rates).filter(c => !c.includes('>')).forEach(c => used.add(c))
   if (spendCur) used.add(spendCur)
   data.travelers.forEach(t => { if (t.statement_currency && t.statement_currency !== cur) used.add(t.statement_currency) })
   // Show each person's card currency only where it can matter: a group that spends in, or has paid in, another currency.
@@ -165,6 +166,8 @@ export default function TripTab() {
         </div>
         <div className="muted small">New currencies start at a rate of 1. Replace it with a real estimate.</div>
       </div>
+
+      {showStmt && <CardRates />}
 
       <div className="sect">
         <h2>Group settings</h2>

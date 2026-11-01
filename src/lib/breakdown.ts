@@ -1,9 +1,10 @@
 import { computeLedger } from './ledger'
 import { catLabel, NO_CATEGORY } from './categories'
+import { NO_PAY_SUBTYPE, NO_PAY_TYPE } from './payTypes'
 import { fmtDate, fmtTime } from './format'
 import type { GroupData } from './types'
 
-export type By = 'category' | 'sub' | 'date' | 'vendor'
+export type By = 'category' | 'sub' | 'date' | 'vendor' | 'pay'
 export type Metric = 'total' | 'mine'
 
 export interface BreakdownRow {
@@ -42,6 +43,8 @@ interface Item {
   description: string
   category: string
   subcategory: string
+  payType: string
+  paySub: string
   minor: number
   estimated: boolean
 }
@@ -61,7 +64,7 @@ function itemsOf(d: GroupData, metric: Metric): { items: Item[]; missing: number
       if (share <= 0) { notMine++; continue }
       minor = share
     }
-    items.push({ id: e.id, date: e.spent_on, time: e.spent_at, vendor: e.vendor, description: e.description ?? '', category: e.category, subcategory: e.subcategory ?? '', minor, estimated: c.status === 'estimated' })
+    items.push({ id: e.id, date: e.spent_on, time: e.spent_at, vendor: e.vendor, description: e.description ?? '', category: e.category, subcategory: e.subcategory ?? '', payType: e.pay_type ?? '', paySub: e.pay_subtype ?? '', minor, estimated: c.status === 'estimated' })
   }
   return { items, missing, notMine }
 }
@@ -76,7 +79,7 @@ function groupBy<T>(arr: T[], f: (x: T) => string): Array<[string, T[]]> {
   return [...m]
 }
 
-/** What the group spent, grouped by category, sub-category, date or vendor, with the expenses behind each row. */
+/** What the group spent, grouped by category, sub-category, payment type (then subtype), date or vendor, with the expenses behind each row. */
 export function buildBreakdown(d: GroupData, by: By, metric: Metric): Breakdown {
   const { items, missing, notMine } = itemsOf(d, metric)
   const base = '/g/' + d.group.id + '/expense/'
@@ -92,6 +95,13 @@ export function buildBreakdown(d: GroupData, by: By, metric: Metric): Breakdown 
       key: cat, label: cat, minor: sum(arr), count: arr.length, category: cat === NO_CATEGORY ? '' : cat, estimated: anyEst(arr),
       kids: groupBy(arr, x => x.subcategory || 'No sub-category').map(([sc, a2]) => ({
         key: cat + '|' + sc, label: sc, minor: sum(a2), count: a2.length, estimated: anyEst(a2), kids: leaves(a2, cat + '|' + sc),
+      })).sort(byMinor),
+    })).sort(byMinor)
+  } else if (by === 'pay') {
+    rows = groupBy(items, x => x.payType || NO_PAY_TYPE).map(([t, arr]) => ({
+      key: 'pay|' + t, label: t, minor: sum(arr), count: arr.length, estimated: anyEst(arr),
+      kids: t === NO_PAY_TYPE ? leaves(arr, 'pay|' + t) : groupBy(arr, x => x.paySub || NO_PAY_SUBTYPE).map(([s, a2]) => ({
+        key: 'pay|' + t + '|' + s, label: s, minor: sum(a2), count: a2.length, estimated: anyEst(a2), kids: leaves(a2, 'pay|' + t + '|' + s),
       })).sort(byMinor),
     })).sort(byMinor)
   } else if (by === 'sub') {

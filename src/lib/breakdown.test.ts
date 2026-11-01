@@ -119,3 +119,23 @@ describe('expense description in the breakdown', () => {
     }
   })
 })
+
+describe('breakdown by payment type', () => {
+  const paid = G('pt', 'Pay', 'CAD', [
+    E('pt', 'a', { amount: 100, pay_type: 'Credit card', pay_subtype: 'Visa' }),
+    E('pt', 'b', { amount: 50, pay_type: 'Credit card', pay_subtype: 'Visa' }),
+    E('pt', 'c', { amount: 30, pay_type: 'Credit card', pay_subtype: 'Amex' }),
+    E('pt', 'd', { amount: 20, pay_type: 'Credit card' }),
+    E('pt', 'e', { amount: 40, pay_type: 'Cash' }),
+    E('pt', 'f', { amount: 10, pay_type: 'Gift card', pay_subtype: 'Starbucks' }),
+    E('pt', 'g', { amount: 5 }),
+  ])
+  it('groups by type, then subtype, with a row for expenses that gave none', () => {
+    const b = buildBreakdown(paid, 'pay', 'total')
+    expect(b.rows.map(r => [r.label, r.minor])).toEqual([['Credit card', 20000], ['Cash', 4000], ['Gift card', 1000], ['Not specified', 500]])
+    const cc = b.rows[0]
+    expect(cc.kids?.map(k => [k.label, k.minor, k.count])).toEqual([['Visa', 15000, 2], ['Amex', 3000, 1], ['No subtype', 2000, 1]])
+    expect(cc.kids?.[0].kids?.length).toBe(2)           // the expenses behind Visa
+    expect(b.total).toBe(b.rows.reduce((s, r) => s + r.minor, 0))
+  })
+})

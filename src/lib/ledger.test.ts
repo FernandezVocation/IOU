@@ -160,3 +160,40 @@ describe('a statement amount in the payer’s own card currency', () => {
     expect(expenseInGroupCurrency(e({ charged_amount: 600, charged_currency: 'QAR' }), 'CAD', {})).toEqual({ minor: null, status: 'norate' })
   })
 })
+
+describe('estimates through the card the bill was paid on', () => {
+  // A 100 EUR bill; the payer's card is in QAR. 1 EUR = 4 QAR, 1 QAR = 0.37 CAD, 1 EUR = 1.5 CAD directly.
+  const rates = { EUR: 1.5, QAR: 0.37, 'EUR>QAR': 4 }
+  const bill = (o: Partial<Expense> & { split?: Record<string, number> } = {}) => exp('x', { amount: 100, currency: 'EUR', split: { a: 1 }, ...o })
+  const cad = (e: Expense, r: Record<string, number>, card?: string | null) => expenseInGroupCurrency(e, 'CAD', r, card)
+
+  it('goes bill > card > group currency when both rates are known', () => {
+    expect(cad(bill(), rates, 'QAR')).toEqual({ minor: 14800, status: 'estimated' })      // 100 x 4 x 0.37
+  })
+  it('uses the card chosen for this expense over the payer’s usual card', () => {
+    expect(cad(bill({ card_currency: 'QAR' }), rates, 'INR')).toEqual({ minor: 14800, status: 'estimated' })
+    expect(cad(bill({ card_currency: 'INR' }), rates, 'QAR').minor).toBe(15000)             // INR pair not set: falls back to the direct 1.5
+  })
+  it('falls back to the direct bill rate when the card rate or the pair is missing', () => {
+    expect(cad(bill(), { EUR: 1.5, 'EUR>QAR': 4 }, 'QAR').minor).toBe(15000)
+    expect(cad(bill(), { EUR: 1.5, QAR: 0.37 }, 'QAR').minor).toBe(15000)
+    expect(cad(bill(), rates, null).minor).toBe(15000)
+  })
+  it('does nothing when the card is in the group currency or the same as the bill', () => {
+    expect(cad(bill(), rates, 'CAD').minor).toBe(15000)
+    expect(cad(bill(), rates, 'EUR').minor).toBe(15000)
+  })
+  it('an exact amount typed from the statement always wins', () => {
+    expect(cad(bill({ settled_amount: 155 }), rates, 'QAR')).toEqual({ minor: 15500, status: 'confirmed' })
+    expect(cad(bill({ charged_amount: 380, charged_currency: 'QAR' }), rates, 'QAR')).toEqual({ minor: 14060, status: 'estimated' })   // 380 QAR x 0.37
+  })
+  it('with nothing to go on the expense is left out', () => {
+    expect(cad(bill(), {}, 'QAR')).toEqual({ minor: null, status: 'norate' })
+  })
+  it('the ledger takes the payer’s card from the traveler, and the expense’s own card over it', () => {
+    const tr = [{ ...T('a'), statement_currency: 'QAR' }, T('b')]
+    const run = (e: Expense) => computeLedger({ currency: 'CAD', travelers: tr, expenses: [e], payments: [], rates, includeEstimates: true })
+    expect(run(bill({ split: { a: 1, b: 1 } })).total).toBe(14800)
+    expect(run(bill({ split: { a: 1, b: 1 }, card_currency: 'CAD' })).total).toBe(15000)
+  })
+})

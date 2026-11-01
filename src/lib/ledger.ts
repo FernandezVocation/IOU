@@ -9,16 +9,23 @@ export interface Calc { minor: number | null; status: CalcStatus }
  *  - already in the group currency            -> confirmed
  *  - foreign with a settled (statement) amount -> confirmed
  *  - foreign, statement amount + a rate for its currency -> estimated (the payer's own charge)
+ *  - foreign, no statement amount, a bill > card rate (EUR>QAR) and a card rate (QAR) -> estimated through the card
  *  - foreign, no settled amount, rate known    -> estimated
  *  - foreign, nothing to go on                 -> norate (left out of balances)
  */
-export function expenseInGroupCurrency(e: Expense, groupCurrency: string, rates: Record<string, number>): Calc {
+export function expenseInGroupCurrency(e: Expense, groupCurrency: string, rates: Record<string, number>, payerCard?: string | null): Calc {
   if (e.currency === groupCurrency) return { minor: toMinor(e.amount, groupCurrency), status: 'confirmed' }
   if (e.settled_amount != null && e.settled_amount > 0) return { minor: toMinor(e.settled_amount, groupCurrency), status: 'confirmed' }
   if (e.charged_amount != null && e.charged_amount > 0 && e.charged_currency) {
     if (e.charged_currency === groupCurrency) return { minor: toMinor(e.charged_amount, groupCurrency), status: 'confirmed' }
     const cr = rates[e.charged_currency]
     if (cr > 0) return { minor: Math.round(e.charged_amount * cr * 10 ** currencyDigits(groupCurrency)), status: 'estimated' }
+  }
+  // Paid on a card in a third currency: bill > card, then card > group currency. Only when both rates are known.
+  const card = e.card_currency || e.charged_currency || payerCard
+  if (card && card !== e.currency && card !== groupCurrency) {
+    const toCard = rates[e.currency + '>' + card], cardToGroup = rates[card]
+    if (toCard > 0 && cardToGroup > 0) return { minor: Math.round(e.amount * toCard * cardToGroup * 10 ** currencyDigits(groupCurrency)), status: 'estimated' }
   }
   const r = rates[e.currency]
   if (r > 0) return { minor: Math.round(e.amount * r * 10 ** currencyDigits(groupCurrency)), status: 'estimated' }
@@ -78,6 +85,7 @@ export interface LedgerInput {
 export function computeLedger(input: LedgerInput): LedgerResult {
   const { currency, travelers, expenses, payments, rates, includeEstimates } = input
   const ids = new Set(travelers.map(t => t.id))
+  const cardOf = new Map(travelers.map(t => [t.id, t.statement_currency ?? null]))
   const zero = () => Object.fromEntries(travelers.map(t => [t.id, 0])) as Record<string, number>
   const R: LedgerResult = {
     balance: zero(), paid: zero(), share: zero(), sent: zero(), received: zero(),
@@ -93,7 +101,7 @@ export function computeLedger(input: LedgerInput): LedgerResult {
   }
 
   for (const e of expenses) {
-    const c = expenseInGroupCurrency(e, currency, rates)
+    const c = expenseInGroupCurrency(e, currency, rates, cardOf.get(e.payer_id))
     R.calc[e.id] = c
     if (c.status === 'norate') { R.counts.missing++; continue }
     if (c.status === 'estimated') {

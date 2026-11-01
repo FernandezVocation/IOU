@@ -12,6 +12,7 @@ import CategoryIcon from '../components/CategoryIcon'
 import TypeIcon from '../components/TypeIcon'
 import { Avatar, ConfirmDialog, useToast } from '../components/ui'
 import CategoryPicker from '../components/CategoryPicker'
+import PayTypePicker from '../components/PayTypePicker'
 import AddExpenseToItinerary from '../components/AddExpenseToItinerary'
 import { categoryForExpense } from '../lib/itinerary'
 import { itinerariesFor } from '../lib/useItinerary'
@@ -26,6 +27,9 @@ interface Form {
   amount: string; foreign: boolean; pick: string; otherCur: string; settled: string; charged: string
   payerId: string; mode: SplitMode; entries: Record<string, string>
   status: ExpenseStatus; itemId: string; planId: string
+  /** The card used for this purchase. Blank: the payer's usual card. */
+  cardCur: string
+  payType: string; paySub: string
 }
 
 const LAST_FOREIGN = 'tl_last_foreign_currency'
@@ -96,6 +100,7 @@ export default function ExpenseEditor() {
       amount: existing ? String(existing.amount) : (/^\d+(\.\d{1,2})?$/.test(qs.get('amount') ?? '') ? qs.get('amount')! : ''), foreign, pick: inList ? startCur : '__other', otherCur: inList ? '' : startCur,
       settled: existing?.settled_amount != null ? String(existing.settled_amount) : '',
       charged: existing?.charged_amount != null ? String(existing.charged_amount) : '',
+      cardCur: existing?.card_currency ?? existing?.charged_currency ?? '', payType: existing?.pay_type ?? '', paySub: existing?.pay_subtype ?? '',
       payerId: existing?.payer_id ?? data.me?.id ?? data.travelers[0]?.id ?? '',
       mode: existing?.split_mode ?? 'equal',
       status: existing?.status ?? 'final', itemId: existing ? (existing.vault_item_id ?? '') : (qs.get('item') ?? ''), planId: existing ? (existing.itinerary_item_id ?? '') : (qs.get('plan') ?? ''),
@@ -121,7 +126,7 @@ export default function ExpenseEditor() {
   const amountNum = form ? parseNum(form.amount) : NaN
   // The payer's own card currency. It decides what the "statement" field means.
   const payerT = form ? data.travelers.find(t => t.id === form.payerId) : undefined
-  const stmtCur = (existing && form && form.payerId === existing.payer_id && existing.charged_currency) || payerT?.statement_currency || base
+  const stmtCur = form?.cardCur || payerT?.statement_currency || base
   const totalMinor = amountNum > 0 && isValidCurrency(cur) ? toMinor(amountNum, cur) : 0
 
   const ids = form ? Object.keys(form.entries) : []
@@ -194,7 +199,7 @@ export default function ExpenseEditor() {
     const splits = ids.map(i => ({ traveler_id: i, value: f.mode === 'equal' ? 1 : parseNum(f.entries[i]) }))
     const { error } = await supabase.rpc('save_expense', {
       p_id: id, p_group: g.id,
-      p: { spent_on: f.date, spent_at: f.time || '', vendor: f.vendor.trim(), description: f.description.trim(), location: f.location.trim(), category: f.category.trim(), subcategory: f.category.trim() ? f.subcategory.trim() : '', notes: f.notes.trim(), amount: amountNum, currency: cur, settled_amount: settled, charged_amount: charged?.amount ?? null, charged_currency: charged?.currency ?? null, payer_id: f.payerId, split_mode: f.mode, status: f.status, vault_item_id: f.itemId || null, itinerary_item_id: f.planId || null, booking_ref: f.ref.trim() },
+      p: { spent_on: f.date, spent_at: f.time || '', vendor: f.vendor.trim(), description: f.description.trim(), location: f.location.trim(), category: f.category.trim(), subcategory: f.category.trim() ? f.subcategory.trim() : '', notes: f.notes.trim(), amount: amountNum, currency: cur, settled_amount: settled, charged_amount: charged?.amount ?? null, charged_currency: charged?.currency ?? null, card_currency: f.foreign && cur !== base ? stmtCur : null, pay_type: f.payType.trim(), pay_subtype: f.payType.trim() ? f.paySub.trim() : '', payer_id: f.payerId, split_mode: f.mode, status: f.status, vault_item_id: f.itemId || null, itinerary_item_id: f.planId || null, booking_ref: f.ref.trim() },
       p_splits: splits,
     })
     if (error) { toast(friendly(error)); setSaving(false); return }
@@ -258,10 +263,12 @@ export default function ExpenseEditor() {
   const chargedNum = parseNum(f.charged)
   const inBase = (n: number, r: number) => fmtMoney(Math.round(n * r * 10 ** currencyDigits(base)), base)
   const sRate = data.rates[stmtCur]
+  const pairRate = data.rates[cur + '>' + stmtCur]
   const useCharged = stmtCur !== base && stmtCur !== cur
   const hint = settledNum > 0 && amountNum > 0 ? `Effective rate: 1 ${cur} = ${(settledNum / amountNum).toFixed(4)} ${base}`
     : useCharged && chargedNum > 0 && sRate > 0 ? `Your ${fmtMoney(toMinor(chargedNum, stmtCur), stmtCur)} counts as ≈ ${inBase(chargedNum, sRate)} at your group’s rate (1 ${stmtCur} = ${sRate} ${base}). Type the exact ${base} amount below once you know it.`
     : useCharged && chargedNum > 0 ? `No ${stmtCur} rate is set for this group. Type the exact ${base} amount below, or ask an admin to add a ${stmtCur} rate in Group settings.`
+    : stmtCur !== base && stmtCur !== cur && amountNum > 0 && pairRate > 0 && sRate > 0 ? `Estimated through your ${stmtCur} card: 1 ${cur} = ${pairRate} ${stmtCur}, then 1 ${stmtCur} = ${sRate} ${base}: ≈ ${inBase(amountNum * pairRate, sRate)}. Type the ${stmtCur} amount or the exact ${base} amount once your statement posts.`
     : stmtCur !== base && stmtCur === cur && amountNum > 0 && sRate > 0 ? `Paid in ${cur}, counts as ≈ ${inBase(amountNum, sRate)} at your group’s rate (1 ${cur} = ${sRate} ${base}). Type the exact ${base} amount once your statement posts.`
     : rate > 0 && amountNum > 0 ? `Estimated at your group’s rate (1 ${cur} = ${rate} ${base}): ≈ ${inBase(amountNum, rate)}. Fill in the real amount when your statement posts.`
     : `No ${cur || 'currency'} rate set. Enter the ${base} amount now or add a rate in Group settings, otherwise this expense is not counted.`
@@ -272,11 +279,6 @@ export default function ExpenseEditor() {
   })
   const currencyChoices = [...new Set([...(spending ? [spending] : []), ...COMMON_CURRENCIES.filter(c => c !== base), ...(isValidCurrency(cur) && cur !== base ? [cur] : [])])]
   const stmtChoices = [...new Set([base, ...(spending ? [spending] : []), stmtCur, ...COMMON_CURRENCIES])]
-  async function setStmtCur(v: string) {
-    if (!payerT) return
-    const { error } = await supabase.from('travelers').update({ statement_currency: v === base ? null : v }).eq('id', payerT.id)
-    if (error) toast(friendly(error)); else await reload()
-  }
 
   return (
     <div className="sheet">
@@ -324,8 +326,9 @@ export default function ExpenseEditor() {
           <div>
             {!readOnly && (
               <>
-                <label className="lbl" htmlFor="stmtcur">{payerT ? (payerT.id === data.me?.id ? 'Your' : payerT.name + '’s') : 'Their'} card statement is in</label>
-                <CurrencySelect id="stmtcur" value={stmtCur} choices={stmtChoices} onChange={setStmtCur} />
+                <label className="lbl" htmlFor="stmtcur">Card used for this purchase is in</label>
+                <CurrencySelect id="stmtcur" value={stmtCur} choices={stmtChoices} onChange={v => set('cardCur', v)} />
+                <div className="muted small" style={{ marginTop: 4 }}>{payerT ? `${payerT.id === data.me?.id ? 'Your' : payerT.name + '’s'} usual card is in ${payerT.statement_currency ?? base}. Change it here if a different card was used.` : ''}</div>
               </>
             )}
             {useCharged && (
@@ -357,9 +360,11 @@ export default function ExpenseEditor() {
         <input type="text" id="loc" maxLength={120} value={f.location} onChange={e => set('location', e.target.value)} />
 
         <label className="lbl" htmlFor="payer">Paid by</label>
-        <select id="payer" value={f.payerId} onChange={e => set('payerId', e.target.value)}>
+        <select id="payer" value={f.payerId} onChange={e => setForm(p => (p ? { ...p, payerId: e.target.value, cardCur: '' } : p))}>
           {data.travelers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
         </select>
+        <PayTypePicker payType={f.payType} paySubtype={f.paySub} history={data.expenses}
+          onChange={(t, s) => setForm(p => (p ? { ...p, payType: t, paySub: s } : p))} />
 
         <div className="lbl">Split</div>
         <div className="seg" role="group">

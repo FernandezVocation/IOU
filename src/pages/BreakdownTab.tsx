@@ -4,9 +4,9 @@ import { fmtMoney } from '../lib/money'
 import BreakdownList, { CategoryBar } from '../components/BreakdownList'
 import { useGroup } from './GroupShell'
 
-const MODES: Array<[By, string]> = [['category', 'Category'], ['sub', 'Sub-category'], ['date', 'Date'], ['vendor', 'Vendor']]
+const MODES: Array<[By, string]> = [['category', 'Category'], ['sub', 'Sub-category'], ['pay', 'Paid with'], ['date', 'Date'], ['vendor', 'Vendor']]
 
-/** Where the money went: every expense in the group, grouped four ways. */
+/** Where the money went: every expense in the group, grouped five ways. */
 export default function BreakdownTab() {
   const { data } = useGroup()
   const cur = data.group.currency

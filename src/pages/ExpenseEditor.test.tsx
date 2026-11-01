@@ -214,9 +214,39 @@ describe('a group that spends in another currency than it settles in', () => {
     await waitFor(() => expect(rpc).toHaveBeenCalled())
     expect(lastCall().p).toMatchObject({ currency: 'CAD', amount: 12, settled_amount: null, charged_amount: null })
   })
-  it('remembers a person’s card currency when they change it', async () => {
+  it('lets the card be changed for this purchase only, and saves it with the expense', async () => {
     mount('new', venice)
-    fireEvent.change(screen.getByLabelText(/card statement is in/), { target: { value: 'USD' } })
-    await waitFor(() => expect(updEq).toHaveBeenCalledWith('id', 'a'))
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '50' } })
+    fireEvent.change(screen.getByLabelText(/Card used for this purchase/), { target: { value: 'USD' } })
+    fireEvent.click(screen.getByText('Save'))
+    await waitFor(() => expect(rpc).toHaveBeenCalled())
+    expect(lastCall().p).toMatchObject({ card_currency: 'USD' })
+    expect(updEq).not.toHaveBeenCalled()           // the person's usual card is not rewritten
+  })
+  it('estimates through the card when a bill > card rate is set', () => {
+    mount('new', { ...venice, rates: { ...venice.rates, 'EUR>QAR': 4, QAR: 0.37 } })
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '100' } })
+    fireEvent.change(screen.getByLabelText(/Paid by/), { target: { value: 'b' } })
+    expect(screen.getByText(/Estimated through your QAR card: 1 EUR = 4 QAR, then 1 QAR = 0.37 CAD/)).toBeTruthy()
+  })
+})
+
+describe('paid with', () => {
+  it('saves the payment type and subtype, and nothing when none is picked', async () => {
+    mount('new', base)
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '12' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Debit card' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Debit' }))
+    fireEvent.click(screen.getByText('Save'))
+    await waitFor(() => expect(rpc).toHaveBeenCalled())
+    expect(lastCall().p).toMatchObject({ pay_type: 'Debit card', pay_subtype: 'Debit' })
+  })
+  it('sends an empty type when nothing is picked', async () => {
+    rpc.mockClear()
+    mount('new', base)
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '12' } })
+    fireEvent.click(screen.getByText('Save'))
+    await waitFor(() => expect(rpc).toHaveBeenCalled())
+    expect(lastCall().p).toMatchObject({ pay_type: '', pay_subtype: '' })
   })
 })

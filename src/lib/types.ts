@@ -71,6 +71,12 @@ export interface Expense {
   /** What the payer's card statement charged, in their statement currency (turned into an estimate at the group rate). */
   charged_amount?: number | null
   charged_currency?: string | null
+  /** The card this expense was paid on (blank: the payer's usual card). Drives the bill > card > group-currency estimate. */
+  card_currency?: string | null
+  /** How it was paid: Cash, Credit card, Debit card, Bank transfer or anything typed. Optional. */
+  pay_type?: string
+  /** Under the payment type (Visa, Interac ...). Needs a payment type. */
+  pay_subtype?: string
   payer_id: string
   split_mode: SplitMode
   created_at: string

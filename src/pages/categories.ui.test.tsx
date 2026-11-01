@@ -88,7 +88,7 @@ describe('picking a category and sub-category', () => {
   })
   it('takes any typed custom category and sub-category', async () => {
     mountEditor()
-    fireEvent.click(chip('Custom…'))
+    fireEvent.click(within(screen.getByRole('group', { name: 'Category' })).getByRole('button', { name: 'Custom…' }))
     fireEvent.change(screen.getByLabelText(/Custom category/), { target: { value: 'Pets' } })
     fireEvent.change(screen.getByLabelText(/^Sub-category/), { target: { value: 'Vet visit' } })
     await save()
