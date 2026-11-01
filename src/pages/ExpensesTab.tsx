@@ -10,6 +10,8 @@ import { iconsFor, useAllItineraryIcons } from '../lib/useItineraryIcons'
 import { statusLabel, useGroupItineraryItems, useGroupVaultItems, type LinkedItem, type LinkedItineraryItem } from '../lib/expenseExtras'
 import CategoryIcon from '../components/CategoryIcon'
 import TypeIcon from '../components/TypeIcon'
+import ExpenseFilterPanel from '../components/ExpenseFilterPanel'
+import { NO_FILTERS, activeCount, describeFilters, filterExpenses } from '../lib/expenseFilters'
 import { useGroup, who } from './GroupShell'
 
 const clipIcon = <svg className="i" viewBox="0 0 24 24" style={{ width: 14, height: 14 }}><path d="M21 11.5l-8.5 8.5a5 5 0 0 1-7-7L14 4.5a3.3 3.3 0 0 1 4.7 4.7L10 18a1.7 1.7 0 0 1-2.4-2.4L15 8" /></svg>
@@ -19,6 +21,8 @@ export default function ExpensesTab() {
   const cur = data.group.currency
   const [q, setQ] = useState('')
   const [needOnly, setNeedOnly] = useState(false)
+  const [filters, setFilters] = useState(NO_FILTERS)
+  const [showFilters, setShowFilters] = useState(false)
   const R = useMemo(() => computeLedger({ currency: cur, travelers: data.travelers, expenses: data.expenses, payments: data.payments, rates: data.rates, includeEstimates: true }), [data, cur])
   const { items: vaultItems } = useGroupVaultItems(data.group.id, data.expenses.some(e => !!e.vault_item_id))
   const linked = useMemo(() => new Map(vaultItems.map(i => [i.id, i])), [vaultItems])
@@ -31,8 +35,10 @@ export default function ExpensesTab() {
     return <div className="empty"><b>Add the people first</b>Open More, then Group settings, and add everyone who is splitting costs.</div>
   }
 
+  const nActive = activeCount(filters)
   let list = [...data.expenses]
   if (needOnly) list = list.filter(e => R.calc[e.id]?.status !== 'confirmed')
+  list = filterExpenses(data, list, R.calc, filters)
   const s = q.trim().toLowerCase()
   if (s) list = list.filter(e => [e.vendor, e.booking_ref ?? '', e.description ?? '', e.location, e.category, e.subcategory ?? '', e.notes, who(data, e.payer_id, false)].join(' ').toLowerCase().includes(s))
   list.sort((a, b) => b.spent_on.localeCompare(a.spent_on) || (b.spent_at ?? '').localeCompare(a.spent_at ?? '') || b.created_at.localeCompare(a.created_at))
@@ -52,9 +58,19 @@ export default function ExpensesTab() {
         </div>
       </div>
       {needs.length > 0 && <div className="notice">{needs.length} expense{needs.length === 1 ? '' : 's'} in another currency still need the {cur} amount from your card statement.</div>}
-      <input type="search" className="inp" placeholder="Search vendor, description, place, category, notes" value={q} onChange={e => setQ(e.target.value)} aria-label="Search expenses" />
+      <div className="frow">
+        <input type="search" className="inp" placeholder="Search vendor, description, place, category, notes" value={q} onChange={e => setQ(e.target.value)} aria-label="Search expenses" />
+        <button className="btn small" aria-expanded={showFilters} onClick={() => setShowFilters(o => !o)}>Filters{nActive > 0 ? ` (${nActive})` : ''}</button>
+      </div>
+      {showFilters && <ExpenseFilterPanel data={data} value={filters} onChange={setFilters} />}
+      {nActive > 0 && (
+        <div className="muted small" style={{ margin: '6px 0' }}>
+          {describeFilters(data, filters)} · {list.length} of {data.expenses.length} · {fmtMoney(list.reduce((sum, e) => sum + (R.calc[e.id]?.minor ?? 0), 0), cur)}{' '}
+          <button className="btn small" onClick={() => setFilters(NO_FILTERS)}>Clear</button>
+        </div>
+      )}
       <div className="chips"><button className="chip" aria-pressed={needOnly} onClick={() => setNeedOnly(v => !v)}>Needs {cur} amount ({needs.length})</button></div>
-      {!list.length && <div className="empty"><b>{data.expenses.length ? 'Nothing matches' : 'No expenses yet'}</b>{data.expenses.length ? 'Try a different search.' : 'Tap + to log the first one.'}</div>}
+      {!list.length && <div className="empty"><b>{data.expenses.length ? 'Nothing matches' : 'No expenses yet'}</b>{data.expenses.length ? 'Try a different search or clear the filters.' : 'Tap + to log the first one.'}</div>}
       {[...groups.keys()].sort().reverse().map(d => {
         const items = groups.get(d) ?? []
         const tot = items.reduce((sum, e) => sum + (R.calc[e.id]?.minor ?? 0), 0)
